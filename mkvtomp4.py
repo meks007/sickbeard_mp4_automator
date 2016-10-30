@@ -39,6 +39,11 @@ class MkvtoMp4:
                  subencoding='utf-8',
                  downloadsubs=True,
                  processMP4=False,
+                 meks_video_quality='23',
+                 meks_h264_preset='medium',
+                 meks_metadata=None,
+                 meks_staging=True,
+                 meks_stageext='part',
                  copyto=None,
                  moveto=None,
                  embedsubs=True,
@@ -63,6 +68,11 @@ class MkvtoMp4:
         self.output_dir = output_dir
         self.relocate_moov = relocate_moov
         self.processMP4 = processMP4
+        self.meks_video_quality = meks_video_quality
+        self.meks_h264_preset = meks_h264_preset
+        self.meks_metadata = meks_metadata
+        self.meks_staging = meks_staging
+        self.meks_stageext = meks_stageext
         self.copyto = copyto
         self.moveto = moveto
         self.relocate_moov = relocate_moov
@@ -109,6 +119,11 @@ class MkvtoMp4:
         self.output_dir = settings.output_dir
         self.relocate_moov = settings.relocate_moov
         self.processMP4 = settings.processMP4
+        self.meks_h264_preset = settings.meks_h264_preset
+        self.meks_metadata = settings.meks_metadata
+        self.meks_video_quality = settings.meks_video_quality
+        self.meks_staging = settings.meks_staging
+        self.meks_stageext = settings.meks_stageext
         self.copyto = settings.copyto
         self.moveto = settings.moveto
         self.relocate_moov = settings.relocate_moov
@@ -146,105 +161,154 @@ class MkvtoMp4:
 
         self.log.debug("Process started.")
 
+        rename = not self.delete
         delete = self.delete
         deleted = False
+        renamed = False
+        deleted_original = False
         options = None
-        if not self.validSource(inputfile):
+        
+        valid = self.validSource(inputfile)
+        if valid == False:
             return False
-
+        elif valid == -1:
+            self.moveBackAs(inputfile, original, "invalid")
+            return False
+        
         if self.needProcessing(inputfile):
             options = self.generateOptions(inputfile, original=original)
 
             try:
                 if reportProgress:
-                    self.log.info(json.dumps(options, sort_keys=False, indent=4))
+                    self.log.debug(json.dumps(options, sort_keys=False, indent=4))
                 else:
                     self.log.debug(json.dumps(options, sort_keys=False, indent=4))
             except:
                 self.log.exception("Unable to log options.")
 
-            outputfile, inputfile = self.convert(inputfile, options, reportProgress)
+            finaloutputfile, outputfile, inputfile = self.convert(inputfile, options, reportProgress)
 
             if not outputfile:
                 self.log.debug("Error converting, no outputfile present.")
                 return False
-
-            self.log.debug("%s created from %s successfully." % (outputfile, inputfile))
-
+        
         else:
-            outputfile = inputfile
+            outputfile = finaloutputfile = inputfile
             if self.output_dir is not None:
                 try:
                     outputfile = os.path.join(self.output_dir, os.path.split(inputfile)[1])
                     self.log.debug("Outputfile set to %s." % outputfile)
-                    shutil.copy(inputfile, outputfile)
+                    if not outputfile == inputfile:
+                        shutil.copy(inputfile, outputfile)
+                    else:
+                        delete = False
+                        rename = False
                 except Exception as e:
                     self.log.exception("Error moving file to output directory.")
                     delete = False
+                    rename = False
             else:
+                rename = False
                 delete = False
 
-        if delete:
-            self.log.debug("Attempting to remove %s." % inputfile)
-            if self.removeFile(inputfile):
-                self.log.debug("%s deleted." % inputfile)
-                deleted = True
+        if self.validSource(outputfile) == True:
+            self.log.info("Successful conversion of %s!" % (inputfile))
+            self.log.debug("Conversion successful: %s => %s" % (inputfile, outputfile))
+            
+            if delete:
+                self.log.debug("Attempting to remove %s." % inputfile)
+                if self.removeFile(inputfile):
+                    deleted = True
+            if rename:
+                self.log.debug("Attempting to rename %s." % inputfile)
+                if self.moveBackAs(inputfile, inputfile, "recoded"):
+                    renamed = True
+                
+            if original is not None:
+                self.log.debug("Attempting to remove %s." % original)
+                if self.removeFile(original):
+                    deleted_original = True
+            
+            if self.downloadsubs:
+                for subfile in self.deletesubs:
+                    self.log.debug("Attempting to remove subtitle %s." % subfile)
+                    if self.removeFile(subfile):
+                        self.log.debug("Subtitle %s deleted." % subfile)
+                    else:
+                        self.log.debug("Unable to delete subtitle %s." % subfile)
+    
+            dim = self.getDimensions(outputfile)
+            
+            return {'input': inputfile,
+                    'output': outputfile,
+                    'finaloutput': finaloutputfile,
+                    'options': options,
+                    'input_deleted': deleted,
+                    'original_deleted': deleted_original,
+                    'x': dim['x'],
+                    'y': dim['y']}
+        
+        else:
+            self.log.error("Outputfile probed negative, abort.")
+            if original is not None:
+                self.removeFile(inputfile)
+                self.moveBackAs(original, original, "invalid")
             else:
-                self.log.error("Couldn't delete %s." % inputfile)
-        if self.downloadsubs:
-            for subfile in self.deletesubs:
-                self.log.debug("Attempting to remove subtitle %s." % subfile)
-                if self.removeFile(subfile):
-                    self.log.debug("Subtitle %s deleted." % subfile)
-                else:
-                    self.log.debug("Unable to delete subtitle %s." % subfile)
+                self.moveBackAs(inputfile, inputfile, "invalid")
+            self.removeFile(outputfile)
+            return False
 
-        dim = self.getDimensions(outputfile)
-
-        return {'input': inputfile,
-                'output': outputfile,
-                'options': options,
-                'input_deleted': deleted,
-                'x': dim['x'],
-                'y': dim['y']}
-
+    # meks customization - start
     # Determine if a source video file is in a valid format
     def validSource(self, inputfile):
         input_dir, filename, input_extension = self.parseFile(inputfile)
+        
+        self.log.debug("Check if video file is valid - %s" % inputfile)
+        
         # Make sure the input_extension is some sort of recognized extension, and that the file actually exists
-        if (input_extension.lower() in valid_input_extensions or input_extension.lower() in valid_output_extensions):
+        if (input_extension.lower() in valid_input_extensions or input_extension.lower() in valid_output_extensions or self.meks_staging and input_extension.lower() == self.meks_stageext.lower()):
             if (os.path.isfile(inputfile)):
-                self.log.debug("%s is valid." % inputfile)
-                return True
+                info = Converter(self.FFMPEG_PATH, self.FFPROBE_PATH).probe(inputfile)
+                if info is not None and info.video.duration > 0:
+                    self.log.debug("Video file is valid.")
+                    return True
+                else:
+                    self.log.debug("Video file probed negative - assuming bad.")
+                    return -1
             else:
-                self.log.debug("%s not found." % inputfile)
+                self.log.debug("Video file was not found.")
                 return False
         else:
-            self.log.debug("%s is invalid with extension %s." % (inputfile, input_extension))
+            self.log.debug("Video file extension %s is invalid" % input_extension)
             return False
-
+    # meks customization - end
+    
     # Determine if a file meets the criteria for processing
     def needProcessing(self, inputfile):
         input_dir, filename, input_extension = self.parseFile(inputfile)
+        
+        self.log.debug("Check if video file needs processing - %s" % inputfile)
+        
         # Make sure input and output extensions are compatible. If processMP4 is true, then make sure the input extension is a valid output extension and allow to proceed as well
         if (input_extension.lower() in valid_input_extensions or (self.processMP4 is True and input_extension.lower() in valid_output_extensions)) and self.output_extension.lower() in valid_output_extensions:
-            self.log.debug("%s needs processing." % inputfile)
+            self.log.debug("Processing is required.")
             return True
         else:
-            self.log.debug("%s does not need processing." % inputfile)
+            self.log.debug("Processing is NOT required.")
             return False
 
     # Get values for width and height to be passed to the tagging classes for proper HD tags
     def getDimensions(self, inputfile):
-        if self.validSource(inputfile):
-            info = Converter(self.FFMPEG_PATH, self.FFPROBE_PATH).probe(inputfile)
-
-        self.log.debug("Height: %s" % info.video.video_height)
-        self.log.debug("Width: %s" % info.video.video_width)
-
-        return {'y': info.video.video_height,
-                'x': info.video.video_width}
-
+        info = Converter(self.FFMPEG_PATH, self.FFPROBE_PATH).probe(inputfile)
+        
+        if info is not None:
+            self.log.debug("Dimensions - Height: %s" % info.video.video_height)
+            self.log.debug("Dimensions - Width:  %s" % info.video.video_width)
+    
+            return {'y': info.video.video_height,
+                    'x': info.video.video_width}
+        return { 'y': 0, 'x': 0 }
+           
     # Estimate the video bitrate
     def estimateVideoBitrate(self, info):
         total_bitrate = info.format.bitrate
@@ -279,7 +343,7 @@ class MkvtoMp4:
             vcodec = self.video_codec[0]
         vbitrate = self.video_bitrate if self.video_bitrate else vbr
 
-        self.log.info("Pix Fmt: %s." % info.video.pix_fmt)
+        self.log.debug("Pix Fmt: %s." % info.video.pix_fmt)
         if self.pix_fmt and info.video.pix_fmt.lower() not in self.pix_fmt:
             vcodec = self.video_codec[0]
 
@@ -341,7 +405,7 @@ class MkvtoMp4:
                 # Create iOS friendly audio stream if the default audio stream has too many channels (iOS only likes AAC stereo)
                 if self.iOS and a.audio_channels > 2:
                     iOSbitrate = 256 if (self.audio_bitrate * 2) > 256 else (self.audio_bitrate * 2)
-                    self.log.info("Creating audio stream %s from source audio stream %s [iOS-audio]." % (str(l), a.index))
+                    self.log.debug("Creating audio stream %s from source audio stream %s [iOS-audio]." % (str(l), a.index))
                     self.log.debug("Audio codec: %s." % self.iOS[0])
                     self.log.debug("Channels: 2.")
                     self.log.debug("Filter: %s." % self.iOS_filter)
@@ -349,10 +413,10 @@ class MkvtoMp4:
                     self.log.debug("Language: %s." % a.metadata['language'])
                     if l == 0:
                         disposition = 'default'
-                        self.log.info("Audio track is number %s setting disposition to %s" % (str(l), disposition))
+                        self.log.debug("Audio track is number %s setting disposition to %s" % (str(l), disposition))
                     else:
                         disposition = 'none'
-                        self.log.info("Audio track is number %s setting disposition to %s" % (str(l), disposition))
+                        self.log.debug("Audio track is number %s setting disposition to %s" % (str(l), disposition))
                     audio_settings.update({l: {
                         'map': a.index,
                         'codec': self.iOS[0],
@@ -364,7 +428,7 @@ class MkvtoMp4:
                     }})
                     l += 1
                 # If the iOS audio option is enabled and the source audio channel is only stereo, the additional iOS channel will be skipped and a single AAC 2.0 channel will be made regardless of codec preference to avoid multiple stereo channels
-                self.log.info("Creating audio stream %s from source stream %s." % (str(l), a.index))
+                self.log.debug("Creating audio stream %s from source stream %s." % (str(l), a.index))
                 if self.iOS and a.audio_channels <= 2:
                     self.log.debug("Overriding default channel settings because iOS audio is enabled but the source is stereo [iOS-audio].")
                     acodec = 'copy' if a.codec in self.iOS else self.iOS[0]
@@ -407,10 +471,10 @@ class MkvtoMp4:
                 # Set first track as default disposition
                 if l == 0:
                     disposition = 'default'
-                    self.log.info("Audio Track is number %s setting disposition to %s" % (a.index, disposition))
+                    self.log.debug("Audio Track is number %s setting disposition to %s" % (a.index, disposition))
                 else:
                     disposition = 'none'
-                    self.log.info("Audio Track is number %s setting disposition to %s" % (a.index, disposition))
+                    self.log.debug("Audio Track is number %s setting disposition to %s" % (a.index, disposition))
 
                 audio_settings.update({l: {
                     'map': a.index,
@@ -429,7 +493,7 @@ class MkvtoMp4:
         # Subtitle streams
         subtitle_settings = {}
         l = 0
-        self.log.info("Reading subtitle streams.")
+        self.log.debug("Reading subtitle streams.")
         for s in info.subtitle:
             try:
                 if s.metadata['language'].strip() == "" or s.metadata['language'] is None:
@@ -456,7 +520,7 @@ class MkvtoMp4:
                         # 'forced': s.sub_forced,
                         # 'default': s.sub_default
                     }})
-                    self.log.info("Creating subtitle stream %s from source stream %s." % (l, s.index))
+                    self.log.debug("Creating subtitle stream %s from source stream %s." % (l, s.index))
                     l = l + 1
             elif s.codec.lower() not in bad_subtitle_codecs and not self.embedsubs:
                 if self.swl is None or s.metadata['language'].lower() in self.swl:
@@ -501,14 +565,15 @@ class MkvtoMp4:
         # Attempt to download subtitles if they are missing using subliminal
         languages = set()
         try:
-            if self.swl:
-                for alpha3 in self.swl:
-                    languages.add(Language(alpha3))
-            elif self.sdl:
-                languages.add(Language(self.sdl))
-            else:
-                self.downloadsubs = False
-                self.log.error("No valid subtitle language specified, cannot download subtitles.")
+            if self.downloadsubs:
+                if self.swl:
+                    for alpha3 in self.swl:
+                        languages.add(Language(alpha3))
+                elif self.sdl:
+                    languages.add(Language(self.sdl))
+                else:
+                    self.downloadsubs = False
+                    self.log.error("No valid subtitle language specified, cannot download subtitles.")
         except:
             self.log.exception("Unable to verify subtitle languages for download.")
             self.downloadsubs = False
@@ -598,6 +663,18 @@ class MkvtoMp4:
         if vcodec == "h264qsv" and info.video.codec.lower() == "h264" and self.qsv_decoder and (info.video.video_level / 10) < 5:
             options['preopts'].extend(['-vcodec', 'h264_qsv'])
 
+        # meks customization - start
+        #in h264, drop the constant bitrate and use the recommended quality settings.  ffmpeg default is 23 but our default is 20.
+        if vcodec == "h264":
+            del options['video']['bitrate']
+            options['video']['quality'] = self.meks_video_quality if self.meks_video_quality else 23
+            options['video']['preset'] = self.meks_h264_preset if self.meks_h264_preset else 'medium'
+            if self.video_bitrate is not None:  #set maximum bitrate if it's specified
+                options['video']['maxbitrate'] = self.video_bitrate
+        if self.meks_metadata:
+            options['video']['metadata'] = self.meks_metadata
+        # meks customization - end
+        
         # Add width option
         if vwidth:
             options['video']['width'] = vwidth
@@ -605,7 +682,7 @@ class MkvtoMp4:
         # Add pix_fmt
         if self.pix_fmt:
             options['video']['pix_fmt'] = self.pix_fmt[0]
-
+        
         self.options = options
         return options
 
@@ -619,12 +696,20 @@ class MkvtoMp4:
             outputfile = os.path.join(output_dir.decode(sys.getfilesystemencoding()), filename.decode(sys.getfilesystemencoding()) + "." + self.output_extension).encode(sys.getfilesystemencoding())
         except:
             outputfile = os.path.join(output_dir, filename + "." + self.output_extension)
-        self.log.debug("Input directory: %s." % input_dir)
-        self.log.debug("File name: %s." % filename)
-        self.log.debug("Input extension: %s." % input_extension)
-        self.log.debug("Output directory: %s." % output_dir)
-        self.log.debug("Output file: %s." % outputfile)
-
+        
+        self.log.debug("  Input directory: %s" % input_dir)
+        self.log.debug("  File name: %s" % filename)
+        self.log.debug("  Input extension: %s" % input_extension)
+        self.log.debug("  Output directory: %s" % output_dir)
+        if self.meks_staging:
+            finaloutputfile = outputfile
+            outputfile = outputfile + "." + self.meks_stageext
+            self.log.debug("  Staging file: %s" % outputfile)
+            self.log.debug("  Output file: %s" % finaloutputfile)
+        else:
+            finaloutputfile = None
+            self.log.debug("  Output file: %s." % outputfile)
+        
         if os.path.abspath(inputfile) == os.path.abspath(outputfile):
             self.log.debug("Inputfile and outputfile are the same.")
             try:
@@ -650,6 +735,7 @@ class MkvtoMp4:
                         sys.stdout.write(str(timecode))
                     sys.stdout.flush()
 
+            self.log.info(" - done")
             self.log.info("%s created." % outputfile)
 
             try:
@@ -666,7 +752,7 @@ class MkvtoMp4:
                 self.log.error("%s deleted." % outputfile)
             outputfile = None
 
-        return outputfile, inputfile
+        return finaloutputfile, outputfile, inputfile
 
     # Break apart a file path into the directory, filename, and extension
     def parseFile(self, path):
@@ -711,8 +797,35 @@ class MkvtoMp4:
                 self.log.warning("QT FastStart did not run - perhaps moov atom was at the start already.")
                 return inputfile
 
+    def transitionStaging(self, outputfile, finaloutputfile):
+        if self.meks_staging and outputfile is not None and finaloutputfile is not None:
+            if not outputfile == finaloutputfile:
+                self.log.debug("Transitioning staging file to output file")
+                try:
+                    if self.removeFile(finaloutputfile, 2, 10, outputfile):
+                        outputfile = finaloutputfile
+                        self.log.info("Transition complete")
+                    else:
+                        self.log.error("Something happened during transition.")
+                        return False
+                except:
+                    self.log.exception("Unable to transition to final output file.")
+                    return False
+        return outputfile
+    
     # Makes additional copies of the input file in each directory specified in the copy_to option
-    def replicate(self, inputfile, relativePath=None):
+    def replicate(self, process_output, relativePath=None):
+        # transition from staging to final just before replication.
+        # best time to transition since all conversions are already done at this point.
+        try:
+            inputfile = self.transitionStaging(process_output['output'], process_output['finaloutput'])
+            if not inputfile:
+                self.log.error("Transition failed, refusing to replicate")
+                return [process_output['output']]
+        except:
+            self.log.exception("Replication did not receive the full process output - fix it!")
+            raise TypeError("invalid output data")
+
         files = [inputfile]
 
         if self.copyto:
@@ -722,65 +835,98 @@ class MkvtoMp4:
                     d = os.path.join(d, relativePath)
                     if not os.path.exists(d):
                         os.makedirs(d)
+                copytofile = os.path.join(d, os.path.split(inputfile)[1])
                 try:
-                    shutil.copy(inputfile, d)
-                    self.log.info("%s copied to %s." % (inputfile, d))
+                    self.removeFile(copytofile, 2, 10, inputfile, True)
                     files.append(os.path.join(d, os.path.split(inputfile)[1]))
                 except Exception as e:
-                    self.log.exception("First attempt to copy the file has failed.")
-                    try:
-                        if os.path.exists(inputfile):
-                            self.removeFile(inputfile, 0, 0)
-                        try:
-                            shutil.copy(inputfile.decode(sys.getfilesystemencoding()), d)
-                        except:
-                            shutil.copy(inputfile, d)
-                        self.log.info("%s copied to %s." % (inputfile, d))
-                        files.append(os.path.join(d, os.path.split(inputfile)[1]))
-                    except Exception as e:
-                        self.log.exception("Unable to create additional copy of file in %s." % (d))
+                    self.log.exception("Attempt to copy the file has failed.")
 
         if self.moveto:
             self.log.debug("Moveto option is enabled.")
             moveto = os.path.join(self.moveto, relativePath) if relativePath else self.moveto
             if not os.path.exists(moveto):
                 os.makedirs(moveto)
-            try:
-                shutil.move(inputfile, moveto)
-                self.log.info("%s moved to %s." % (inputfile, moveto))
-                files[0] = os.path.join(moveto, os.path.basename(inputfile))
+            movetofile = os.path.join(moveto, os.path.basename(inputfile))
+            try:  
+                self.removeFile(movetofile, 2, 10, inputfile, False)
+                files[0] = movetofile
             except Exception as e:
-                self.log.exception("First attempt to move the file has failed.")
-                try:
-                    if os.path.exists(inputfile):
-                        self.removeFile(inputfile, 0, 0)
-                    shutil.move(inputfile.decode(sys.getfilesystemencoding()), moveto)
-                    self.log.info("%s moved to %s." % (inputfile, moveto))
-                    files[0] = os.path.join(moveto, os.path.basename(inputfile))
-                except Exception as e:
-                    self.log.exception("Unable to move %s to %s" % (inputfile, moveto))
+                self.log.exception("Attempt to move the file has failed.")
+        
         for filename in files:
             self.log.debug("Final output file: %s." % filename)
+        
         return files
 
     # Robust file removal function, with options to retry in the event the file is in use, and replace a deleted file
-    def removeFile(self, filename, retries=2, delay=10, replacement=None):
-        for i in range(retries + 1):
-            try:
-                # Make sure file isn't read-only
-                os.chmod(filename, int("0777", 8))
-            except:
-                self.log.debug("Unable to set file permissions before deletion. This is not always required.")
-            try:
-                os.remove(filename)
-                # Replaces the newly deleted file with another by renaming (replacing an original with a newly created file)
-                if replacement is not None:
-                    os.rename(replacement, filename)
-                    filename = replacement
-                break
-            except:
-                self.log.exception("Unable to remove or replace file %s." % filename)
+    def removeFile(self, filename, retries=2, delay=10, replacement=None, copyReplace=False):
+        self.log.debug("Removing file - %s" % filename)
+        
+        if filename is not None:
+            for i in range(retries + 1):
+                if os.path.isfile(filename):
+                    try:
+                        # Make sure file isn't read-only
+                        os.chmod(filename, int("0777", 8))
+                    except:
+                        self.log.debug("Unable to set file permissions before deletion.")
+                        
+                    try:
+                        os.remove(filename)
+                        self.log.debug("File removed.")
+                        i = 0
+                    except:
+                        self.log.exception("Unable to remove file.")
+                else:
+                    self.log.debug("File does not exist. Assuming this to be okay, proceed.")
+                
+                if not os.path.isfile(filename):
+                    if replacement is not None:
+                        self.log.debug("Replacing removed file with %s" % replacement)
+                        if os.path.isfile(replacement):
+                            try:
+                                if copyReplace:
+                                    self.log.debug("Replacing by copying replacement.")
+                                    shutil.copy(replacement, filename)
+                                else:
+                                    self.log.debug("Replacing by moving replacement.")
+                                    os.rename(replacement, filename)
+                                
+                                self.log.debug("File replaced.")
+                                filename = replacement
+                                break
+                            except:
+                                self.log.exception("Unable to replace file.")
+                        else:
+                            self.log.error("Replacement file does not exist.")
+                    else:
+                        break
+                else:
+                    self.log.error("File still exists.")
+                
                 if delay > 0:
                     self.log.debug("Delaying for %s seconds before retrying." % delay)
                     time.sleep(delay)
+        
         return False if os.path.isfile(filename) else True
+    
+    # meks customization - start
+    def moveBackAs(self, inputfile, original, addExtension="bad"):
+        if not type(addExtension) in (unicode, str):
+            addExtension = "bad"
+        if original is None:
+            badfile = inputfile
+        else:
+            badfile = original
+        badfile = badfile + "." + addExtension
+        
+        self.log.info("Moving input file to original location and marking as %s." % addExtension)
+        self.log.debug("  Source:      %s" % inputfile)
+        self.log.debug("  Destination: %s" % badfile)
+        try:
+            self.removeFile(badfile, 2, 10, inputfile)
+            self.log.debug("File moved.")
+        except:
+            self.log.exception("Unable to move file.")
+    # meks customization - end

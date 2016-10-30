@@ -16,10 +16,11 @@ from tvdb_api.tvdb_api import Tvdb
 from mutagen.mp4 import MP4, MP4Cover
 from extensions import valid_output_extensions, valid_poster_extensions
 
+from mkvtomp4 import MkvtoMp4
+from readSettings import settingsProvider
 
 class Tvdb_mp4:
     def __init__(self, show, season, episode, original=None, language='en', logger=None):
-
         if logger:
             self.log = logger
         else:
@@ -59,62 +60,68 @@ class Tvdb_mp4:
                 time.sleep(20)
 
     def writeTags(self, mp4Path, artwork=True, thumbnail=False):
-        self.log.info("Tagging file: %s." % mp4Path)
-        ext = os.path.splitext(mp4Path)[1][1:]
-        if ext not in valid_output_extensions:
-            self.log.error("File is not the correct format.")
-            sys.exit()
-
-        video = MP4(mp4Path)
-        try:
-            video.delete()
-        except IOError:
-            self.log.debug("Unable to clear original tags, attempting to proceed.")
-
-        video["tvsh"] = self.show  # TV show title
-        video["\xa9nam"] = self.title  # Video title
-        video["tven"] = self.title  # Episode title
-        video["desc"] = self.shortDescription()  # Short description
-        video["ldes"] = self.description  # Long description (same a short for tv)
-        video["tvnn"] = self.network  # Network
-        if self.airdate != "0000-00-00":
-            video["\xa9day"] = self.airdate  # Airdate
-        video["tvsn"] = [self.season]  # Season number
-        video["disk"] = [(int(self.season), 0)]  # Season number as disk
-        video["\xa9alb"] = self.show + ", Season " + str(self.season)  # iTunes Album as Season
-        video["tves"] = [self.episode]  # Episode number
-        video["trkn"] = [(int(self.episode), len(self.seasondata))]  # Episode number iTunes
-        video["stik"] = [10]  # TV show iTunes category
-        if self.HD is not None:
-            video["hdvd"] = self.HD
-        if self.genre is not None:
-            video["\xa9gen"] = self.genre[1:-1].split('|')[0]
-            # video["\xa9gen"] = self.genre.replace('|', ',')[1:-1]  # Genre(s)
-        video["----:com.apple.iTunes:iTunMOVI"] = self.xml  # XML - see xmlTags method
-        video["----:com.apple.iTunes:iTunEXTC"] = self.setRating()  # iTunes content rating
-
-        if artwork:
-            path = self.getArtwork(mp4Path, thumbnail=thumbnail)
-            if path is not None:
-                cover = open(path, 'rb').read()
-                if path.endswith('png'):
-                    video["covr"] = [MP4Cover(cover, MP4Cover.FORMAT_PNG)]  # png poster
-                else:
-                    video["covr"] = [MP4Cover(cover, MP4Cover.FORMAT_JPEG)]  # jpeg poster
-        if self.original:
-            video["\xa9too"] = "MDH:" + os.path.basename(self.original)
-        else:
-            video["\xa9too"] = "MDH:" + os.path.basename(mp4Path)
-        MP4(mp4Path).delete(mp4Path)
-        for i in range(3):
+        self.log.info("Tagging file %s" % mp4Path)
+        #ext = os.path.splitext(mp4Path)[1][1:]
+        #if ext not in valid_output_extensions and ext not in valid_staging_extensions:
+        if MkvtoMp4(settingsProvider().defaultSettings).validSource(mp4Path) == True:
+            
+            video = MP4(mp4Path)
             try:
-                self.log.info("Trying to write tags.")
-                video.save()
-                self.log.info("Tags written successfully.")
-                break
-            except IOError as e:
-                self.log.exception("There was a problem writing the tags. Retrying.")
-                time.sleep(5)
+                video.delete()
+            except IOError:
+                self.log.debug("Unable to clear original tags, attempting to proceed.")
+    
+            video["tvsh"] = self.show  # TV show title
+            #video["\xa9nam"] = self.title  # Video title
+            #video["tven"] = self.title  # Episode title
+            #video["desc"] = self.shortDescription()  # Short description
+            #video["ldes"] = self.description  # Long description (same a short for tv)
+            #video["tvnn"] = self.network  # Network
+            if self.airdate != "0000-00-00":
+                video["\xa9day"] = self.airdate  # Airdate
+            video["tvsn"] = [self.season]  # Season number
+            #video["disk"] = [(int(self.season), 0)]  # Season number as disk
+            #video["\xa9alb"] = self.show + ", Season " + str(self.season)  # iTunes Album as Season
+            video["tves"] = [self.episode]  # Episode number
+            #video["trkn"] = [(int(self.episode), len(self.seasondata))]  # Episode number iTunes
+            #video["stik"] = [10]  # TV show iTunes category
+            if self.HD is not None:
+                video["hdvd"] = self.HD
+            #if self.genre is not None:
+            #    video["\xa9gen"] = self.genre[1:-1].split('|')[0]
+                ## video["\xa9gen"] = self.genre.replace('|', ',')[1:-1]  # Genre(s)
+            #video["----:com.apple.iTunes:iTunMOVI"] = self.xml  # XML - see xmlTags method
+            #video["----:com.apple.iTunes:iTunEXTC"] = self.setRating()  # iTunes content rating
+    
+            if artwork:
+                path = self.getArtwork(mp4Path, thumbnail=thumbnail)
+                if path is not None:
+                    cover = open(path, 'rb').read()
+                    if path.endswith('png'):
+                        video["covr"] = [MP4Cover(cover, MP4Cover.FORMAT_PNG)]  # png poster
+                    else:
+                        video["covr"] = [MP4Cover(cover, MP4Cover.FORMAT_JPEG)]  # jpeg poster
+            
+            if self.original:
+                video["\xa9too"] = "mdh-ffmpeg-meks" #"MDH:" + os.path.basename(self.original)
+            else:
+                video["\xa9too"] = "mdh-ffmpeg-meks" #"MDH:" + os.path.basename(mp4Path)
+            
+            MP4(mp4Path).delete(mp4Path)
+            
+            for i in range(3):
+                try:
+                    self.log.debug("Trying to write tags.")
+                    video.save()
+                    self.log.debug("Tags written successfully.")
+                    return True
+                    break
+                except IOError as e:
+                    self.log.exception("There was a problem writing the tags. Retrying.")
+                    time.sleep(5)
+        else:
+            self.log.error("The file is invalid.")
+        raise IOError
 
     def setHD(self, width, height):
         if width >= 1900 or height >= 1060:

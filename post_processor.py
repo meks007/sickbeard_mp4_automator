@@ -54,8 +54,10 @@ class PostProcessor:
                 command = self.run_script_command(script)
                 self.log.info("Running script '%s'." % (script))
                 stdout, stderr = command.communicate()
-                self.log.debug("Stdout: %s." % stdout)
-                self.log.debug("Stderr: %s." % stderr)
+                if stdout: 
+                    self.log.debug("Stdout: %s" % stdout)
+                if stderr:
+                    self.log.debug("Stderr: %s" % stderr)
             except Exception as e:
                 self.log.exception("Failed to execute script %s." % script)
 

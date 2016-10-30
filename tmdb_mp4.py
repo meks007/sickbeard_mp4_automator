@@ -15,10 +15,12 @@ from tmdb_api import tmdb
 from mutagen.mp4 import MP4, MP4Cover
 from extensions import valid_output_extensions, valid_poster_extensions, tmdb_api_key
 
+from mkvtomp4 import MkvtoMp4
+from readSettings import settingsProvider
 
 class tmdb_mp4:
     def __init__(self, imdbid, tmdbid=False, original=None, language='en', logger=None):
-
+        
         if logger:
             self.log = logger
         else:

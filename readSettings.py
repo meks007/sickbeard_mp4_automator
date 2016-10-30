@@ -10,7 +10,6 @@ import logging
 from extensions import *
 from babelfish import Language
 
-
 class ReadSettings:
 
     def __init__(self, directory, filename, logger=None):
@@ -45,7 +44,7 @@ class ReadSettings:
                 log.exception("Sorry, your environment is not setup correctly for utf-8 support. Please fix your setup and try again")
                 sys.exit("Sorry, your environment is not setup correctly for utf-8 support. Please fix your setup and try again")
 
-        log.info(sys.executable)
+        #log.info(sys.executable)
 
         # Default settings for SickBeard
         sb_defaults = {'host': 'localhost',
@@ -85,6 +84,11 @@ class ReadSettings:
                         'subtitle-default-language': '',
                         'subtitle-encoding': '',
                         'convert-mp4': 'False',
+                        'meks-video-quality': '',
+                        'meks-h264-preset': 'medium',
+                        'meks-staging': 'True',
+                        'meks-staging-extension': 'part',
+                        'meks-metadata': '',
                         'fullpathguess': 'True',
                         'tagfile': 'True',
                         'tag-language': 'en',
@@ -332,6 +336,30 @@ class ReadSettings:
                 log.exception("Invalid video bitrate, defaulting to no video bitrate cap.")
                 self.vbitrate = None
 
+        # meks customization - start
+        try:
+            self.meks_staging = config.getboolean(section, 'meks-staging')
+            self.meks_stageext = config.get(section, "meks-staging-extension")
+        except:
+            self.meks_staging = False
+        self.meks_h264_preset = config.get(section, "meks-h264-preset")
+        self.meks_metadata = config.get(section, "meks-metadata")
+        self.meks_video_quality = config.get(section, "meks-video-quality")
+        if self.meks_video_quality == '':
+            self.meks_video_quality = None
+        else:
+            try:
+                self.meks_video_quality = int(self.meks_video_quality)
+            except:
+                log.exception("Invalid h264 cfr quality, using default quality")
+                self.meks_video_quality = None
+        self.meks_walk_ignore = config.get(section, 'meks-walk-ignore').strip()
+        if self.meks_walk_ignore == '':
+            self.meks_walk_ignore = None
+        else:
+            self.meks_walk_ignore = self.meks_walk_ignore.split(',')
+        # meks customization - end
+        
         self.vwidth = config.get(section, "video-max-width")
         if self.vwidth == '':
             self.vwidth = None
@@ -573,7 +601,7 @@ class ReadSettings:
 
     def getRefreshURL(self, tvdb_id):
         config = self.config
-        section = "SickBeard"
+        section = "Sickrage"
 
         protocol = "http://"  # SSL
         try:
@@ -626,3 +654,7 @@ class ReadSettings:
             except KeyError:
                 output += char
         return output
+
+class settingsProvider:
+    def __init__(self, logger=None):
+        self.defaultSettings = ReadSettings("/opt/share/sickbeard_mp4_automator", "autoProcess.ini", logger=logger)
