@@ -39,12 +39,11 @@ There are 2 new options in autoProcess.ini available for specifying preset and q
 - `meks-video-quality = 20`
 - `meks-h264-preset = medium`
 
-Note: If video-bitrate was specified then this turns into ffmpeg -maxrate
-Reference: https://trac.ffmpeg.org/wiki/Encode/H.264
+Note: If video-bitrate was specified then this turns into ffmpeg -maxrate. See https://trac.ffmpeg.org/wiki/Encode/H.264
 
 Editing of Metadata
 --------------
-Using `meks-metadata` in autoProcess.ini ffmpeg can be called using -metadata to edit/change metadata during conversion.
+Using `meks-metadata = <metadata-options>` in autoProcess.ini ffmpeg can be called using -metadata to edit/change metadata during conversion.
 
 Recursive mass-processing
 --------------
@@ -60,11 +59,11 @@ During hierarchy walk the processor automatically skips a folder and all of it's
 Example, say you have the following situation:
 - `meks-walk-ignore = ignore.part,recode.skip`
 - Hierarchy as follows:
--- Download
--- Download/Apps - ['ignore.part']
--- Download/Videos
--- Download/ISO - ['recode.skip']
-A hierarchy walk would then skip all files and subfolders in Apps/* and ISO/* and only allow processing of files directly in Download as well as Videos/*
+Download
+Download/Apps - ['ignore.part']
+Download/Videos
+Download/ISO - ['recode.skip']
+- A hierarchy walk would then skip all files and subfolders in Apps/* and ISO/* and only allow processing of files directly in Download as well as Videos/*
 
 Post processing scripts extended:
 --------------
@@ -125,7 +124,7 @@ Note: Windows users should enter commands in Powershell - using '<' doesn't work
 - `requests security package` - Run `pip install requests[security]`
 - `requests-cache` - Run `pip install requests-cache`
 - `babelfish` - Run `pip install babelfish`
-- `guessit` - Run `pip install guessit<2` to use manual.py (requires guessit version 1, version 2 is a complete rewrite, still in alpha, and not backwards compatible)
+- `guessit` - Run `pip install "guessit<2"` to use manual.py (requires guessit version 1, version 2 is a complete rewrite, still in alpha, and not backwards compatible)
 - `subliminal`- Run `pip install "subliminal<2"` to enable automatically downloading subtitles
 - `stevedore` - Run `pip install stevedore` (this will be automatically installed with subliminal)
 - `dateutil` - Run `pip install python-dateutil` (this will be automatically installed with subliminal)
