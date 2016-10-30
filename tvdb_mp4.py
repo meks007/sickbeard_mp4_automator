@@ -61,10 +61,7 @@ class Tvdb_mp4:
 
     def writeTags(self, mp4Path, artwork=True, thumbnail=False):
         self.log.info("Tagging file %s" % mp4Path)
-        #ext = os.path.splitext(mp4Path)[1][1:]
-        #if ext not in valid_output_extensions and ext not in valid_staging_extensions:
         if MkvtoMp4(settingsProvider().defaultSettings).validSource(mp4Path) == True:
-            
             video = MP4(mp4Path)
             try:
                 video.delete()
@@ -89,7 +86,7 @@ class Tvdb_mp4:
                 video["hdvd"] = self.HD
             #if self.genre is not None:
             #    video["\xa9gen"] = self.genre[1:-1].split('|')[0]
-                ## video["\xa9gen"] = self.genre.replace('|', ',')[1:-1]  # Genre(s)
+            #    #video["\xa9gen"] = self.genre.replace('|', ',')[1:-1]  # Genre(s)
             #video["----:com.apple.iTunes:iTunMOVI"] = self.xml  # XML - see xmlTags method
             #video["----:com.apple.iTunes:iTunEXTC"] = self.setRating()  # iTunes content rating
     

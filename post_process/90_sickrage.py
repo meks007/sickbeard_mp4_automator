@@ -43,10 +43,15 @@ def resultToBool(result):
 	return False
 
 def main():
-	print("Sickrage Post Processor started")
-	
-	apiPostProcess()
-	print("Finished")
+	if 'MH_FILES' in os.environ:
+		if 'TVDBID' in os.environ:
+			print("Sickrage Post Processor started.")
+			apiPostProcess()
+			print("Sickrage finished.")
+		else:
+			print("Sickrage: Not a TV show.")
+	else:
+		print("Sickrage: No processed files submitted.")
 
 if __name__ == "__main__":
     main()

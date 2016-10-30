@@ -180,16 +180,16 @@ def processFile(inputfile, tagdata, relativePath=None):
         tagmp4 = None  # No tag data specified but convert the file anyway
     elif tagdata[0] is 1:
         imdbid = tagdata[1]
-        tagmp4 = tmdb_mp4(imdbid, language=settings.taglanguage, logger=log)
+        tagmp4 = tmdb_mp4(imdbid, language=settings.taglanguage)
         try:
-            log.info("Processing %s" % (tagmp4.title.encode(sys.stdout.encoding, errors='ignore')))
+            log.info("Processing movie - %s" % (tagmp4.title.encode(sys.stdout.encoding, errors='ignore')))
         except:
             log.info("Processing movie")
     elif tagdata[0] is 2:
         tmdbid = tagdata[1]
-        tagmp4 = tmdb_mp4(tmdbid, True, language=settings.taglanguage, logger=log)
+        tagmp4 = tmdb_mp4(tmdbid, True, language=settings.taglanguage)
         try:
-            log.info("Processing %s" % (tagmp4.title.encode(sys.stdout.encoding, errors='ignore')))
+            log.info("Processing movie - %s" % (tagmp4.title.encode(sys.stdout.encoding, errors='ignore')))
         except:
             log.info("Processing movie")
     elif tagdata[0] is 3:
@@ -198,7 +198,7 @@ def processFile(inputfile, tagdata, relativePath=None):
         episode = int(tagdata[3])
         tagmp4 = Tvdb_mp4(tvdbid, season, episode, language=settings.taglanguage)
         try:
-            log.info("Processing %s Season %02d Episode %02d - %s" % (tagmp4.show.encode(sys.stdout.encoding, errors='ignore'), int(tagmp4.season), int(tagmp4.episode), tagmp4.title.encode(sys.stdout.encoding, errors='ignore')))
+            log.info("Processing TV show - %s S%02dE%02d - %s" % (tagmp4.show.encode(sys.stdout.encoding, errors='ignore'), int(tagmp4.season), int(tagmp4.episode), tagmp4.title.encode(sys.stdout.encoding, errors='ignore')))
         except:
             log.info("Processing TV episode")
 
@@ -210,14 +210,11 @@ def processFile(inputfile, tagdata, relativePath=None):
                 try:
                     tagmp4.setHD(output['x'], output['y'])
                     tagmp4.writeTags(output['output'], settings.artwork, settings.thumbnail)
-                #except Exception as e:
                 except:
                     log.exception("There was an error tagging the file")
-                    #log.info(e)
             if settings.relocate_moov:
                 converter.QTFS(output['output'])
             # don't just hand over the file, hand over the full thing.
-            #output_files = converter.replicate(output['output'], relativePath=relativePath)
             output_files = converter.replicate(output, relativePath=relativePath)            
             if settings.postprocess:
                 post_processor = PostProcessor(output_files)
@@ -229,13 +226,6 @@ def processFile(inputfile, tagdata, relativePath=None):
                     elif tagdata[0] is 3:
                         post_processor.setTV(tagdata[1], tagdata[2], tagdata[3])
                 post_processor.run_scripts()
-
-from bisect import bisect_left
-def word_exists(wordlist, word_fragment):
-    try:
-        return wordlist[bisect_left(wordlist, word_fragment)].startswith(word_fragment)
-    except IndexError:
-        return False # word_fragment is greater than all entries in wordlist
         
 def walkDir(dir, silent=False, preserveRelative=False, tvdbid=None, tag=True):
     log.debug("Walking directory structure %s" % dir)
@@ -249,8 +239,7 @@ def walkDir(dir, silent=False, preserveRelative=False, tvdbid=None, tag=True):
         
         if not ignore_folder == False and r.startswith(ignore_folder):
             continue
-        else:
-            ignore_folder = False
+        ignore_folder = False
         
         if any(x in settings.meks_walk_ignore for x in f):
             log.debug("Folder %s contains ignore file, stepping over folder." % r)
@@ -260,14 +249,12 @@ def walkDir(dir, silent=False, preserveRelative=False, tvdbid=None, tag=True):
         for file in f:
             filepath = os.path.join(r, file)
             if converter.validSource(filepath) == True:
+                files.append(filepath)
                 log.debug("File added to queue: %s" % filepath)
-            files.append(filepath)
     log.info("%s files ready for processing." % len(files))
             
     for filepath in files:
         if os.path.isfile(filepath):
-            log.debug("Attempting to process %s" % filepath)
-            
             try:
                 try:
                     log.info("Attempting file %s" % (filepath.encode(sys.stdout.encoding, errors='ignore')))

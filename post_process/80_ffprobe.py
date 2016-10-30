@@ -23,25 +23,29 @@ def probe(ffprobe, filename):
 	return data
 
 def main():
-	print("ffprobe dump of processed files")
-	print
-	
-	settings = settingsProvider().defaultSettings
-	
-	files = json.loads(os.environ.get('MH_FILES'))
-	for filename in files:
-		print("Information for %s" % filename)
+	if 'MH_FILES' in os.environ:
+		print("FFprobe dump of processed files")
 		
-		info = probe(settings.ffprobe, filename)
-		if info is not None:
-			if 'streams' in info and 'format' in info:
-				print(json.dumps(info, indent=4, sort_keys=True))
-			else:
-				print("WARNING - No valid video metadata found in file. This is UNUSUAL!")
-		else:
-			print("File appears invalid.")
+		settings = settingsProvider().defaultSettings
 		
 		print
+		files = json.loads(os.environ.get('MH_FILES'))
+		for filename in files:
+			print("Information for %s" % filename)
+			
+			info = probe(settings.ffprobe, filename)
+			if info is not None:
+				if 'streams' in info and 'format' in info:
+					print(json.dumps(info, indent=4, sort_keys=True))
+				else:
+					print("WARNING - No valid video metadata found in file. This is UNUSUAL!")
+			else:
+				print("File appears invalid.")
+			
+			print
+		print("FFprobe finished.")
+	else:
+		print("FFprobe: No processed files submitted.")
 
 if __name__ == "__main__":
     main()

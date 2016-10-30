@@ -5,14 +5,12 @@ Modifications to mdhiggins' version:
 NOTE:
 --------------
 This is work in progress.
-A lot of what I think is useful FOR MY NEEDS is implement. The following is an incomplete list of things open:
-- Tmdb provider needs reshaping to the new logic (Tvdb is done).
-- If launched directly from Sickrage during PostProcess via postConversion.py things are not working as expcted just yet.
--- this is mainly due to the Staging logic not properly implemented in postConversion.py just yet.
--- DO NOT RUN postConversion.py. Rather schedule manual.py and use the Sickrage post_process plugin to trigger TORNADO processing via SR API.
-- If using the CouchPotato plugin things are not working as expected, rather use manual.py
--- CP API for "on-demand" triggering is not yet working, scheduled or manual processing from within CP is working normally though.
-- Generally speaking my ultimate usage pattern is to have manual.py on schedule and scavenge all new files, process them and make them available to Sickrage and CouchPotato via a 'release' folder that these 2 can monitor. As soon as manual.py finishes converting a file trigger PostProcessing in Sickrage and CouchPotato using API calls. I'm no fan of having SR and CP trigger mp4 conversions themselves in an uncontrolled fashion.
+A lot of what I think is useful FOR MY NEEDS is implemented. The following is an incomplete list of things open:
+- If launched directly from Sickrage during PostProcess via postConversion.py things are not working as expcted just yet. This is mainly due to the Staging logic not properly implemented in postConversion.py just yet. 
+- DO NOT RUN postConversion.py. Rather schedule manual.py and use the Sickrage post_process plugin to trigger TORNADO processing via SR API (you only need to configure Sickrage in autoProcess.ini as usual, everything else happens on it's own)
+- If using the CouchPotato plugin things are not working as expected, rather use manual.py.
+- CP API for "on-demand" triggering is not yet working (there is no plugin the likes of sickrage for cp yet). Scheduled or manual processing from within CP is working normally though.
+- Generally speaking my ultimate usage pattern is to have manual.py on schedule, scavenge all new files, process them and make them available to Sickrage and CouchPotato via a 'release' folder (propagated during replication via move-to option) that these 2 can monitor. As soon as manual.py finishes converting a file a trigger should fire PostProcessing in Sickrage and CouchPotato using API calls. I'm no fan of having SR and CP trigger mp4 conversions themselves in an uncontrolled fashion.
 
 That being said here goes the changes so far:
 
@@ -59,10 +57,10 @@ During hierarchy walk the processor automatically skips a folder and all of it's
 Example, say you have the following situation:
 - `meks-walk-ignore = ignore.part,recode.skip`
 - Hierarchy as follows:
-Download
+`Download
 Download/Apps - ['ignore.part']
 Download/Videos
-Download/ISO - ['recode.skip']
+Download/ISO - ['recode.skip']`
 - A hierarchy walk would then skip all files and subfolders in Apps/* and ISO/* and only allow processing of files directly in Download as well as Videos/*
 
 Post processing scripts extended:
@@ -72,7 +70,7 @@ Post processing scripts extended:
 
 Misc changes
 --------------
-- Access to autoSettings.ini is unified to
+- Access to autoSettings.ini is unified:
 `from readSettings import settingsProvider`
 `settingsProvider().defaultSettings`
 This can be extended using multiple providers for multiple configurations (say: different configs for Movies and TV shows)
@@ -80,7 +78,12 @@ eg: `settingsProvder().settingsMovies` or `settingsProvider().settingsTV`
 - manual.py adapted to Python logging rather than print()
 - Media file validation unified to MkvtoMp4().validSource(), takes into account ffprobe information rather than just file extensions
 - If an input file was detected as bad then move it out of the way by renaming it to ".bad"
-- If delete_original = False then a rename operation automatically kicks in that appends ".recoded" to the input file
+- If `delete_original = False` then a rename operation automatically kicks in that appends ".recoded" to the input file. It's either delete or rename, leaving it untouched is no option.
+
+Bugs/Caveats
+--------------
+- Deluge, uTorrent, NZBGET, SABNZBD, Sonarr are problably not working - not tested though (don't use them)
+- Plex refresh works, however personally I have set SR and CP to handle Plex so I don't make use of the Plex interface.
 
 MP4 Conversion/Tagging Automation Script.
 ==============
