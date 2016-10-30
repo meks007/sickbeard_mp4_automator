@@ -261,7 +261,8 @@ class MkvtoMp4:
         if (input_extension.lower() in valid_input_extensions or input_extension.lower() in valid_output_extensions or self.meks_staging and input_extension.lower() == self.meks_stageext.lower()):
             if (os.path.isfile(inputfile)):
                 info = Converter(self.FFMPEG_PATH, self.FFPROBE_PATH).probe(inputfile)
-                if info is not None and info.video.duration > 0:
+                
+                if info is not None and info.format.duration > 0:
                     self.log.debug("Video file is valid.")
                     return True
                 else:

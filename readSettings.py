@@ -206,6 +206,7 @@ class ReadSettings:
         else:
             self.output_dir = os.path.normpath(self.raw(self.output_dir))  # Output directory
         
+        self.copyto = None
         for cptol in ['copy_to']: # Directories to copy the final file to
             cptod = {'movie':[], 'tv':[], 'all':[]}
             cpto = config.get(section, cptol)

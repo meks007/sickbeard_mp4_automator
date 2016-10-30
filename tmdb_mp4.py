@@ -106,7 +106,7 @@ class tmdb_mp4:
                     self.log.debug("Trying to write tags.")
                     video.save()
                     self.log.debug("Tags written successfully.")
-                    break
+                    return True
                 except IOError as e:
                     self.log.exception("There was a problem writing the tags. Retrying.")
                     time.sleep(5)
