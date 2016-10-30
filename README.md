@@ -1,4 +1,5 @@
 MP4 Conversion/Tagging Automation Script.
+==============
 Modifications to mdhiggins' version:
 
 NOTE:
@@ -17,13 +18,13 @@ That being said here goes the changes so far:
 
 Staging
 --------------
-- Convert an input-file to a part-file and only transition to mp4 just before replication (Copy-To/Move-To)
+Convert an input-file to a part-file and only transition to mp4 just before replication (Copy-To/Move-To)
 This allows to exclude files from 3rd party apps while they're being converted.
 The part file will be transitioned after all write operations are finished (that is after conversion, tagging, relocate atoms, ...).
 
 Staging can be defined in autoProcess.ini using:
-- meks-staging = True|False (default: True; make use of the staging logic or revert to traditional processing)
-- meks-staging-extension = part (default: part; extension to append during staging)
+- `meks-staging = True|False` (default: True; make use of the staging logic or revert to traditional processing)
+- `meks-staging-extension = part` (default: part; extension to append during staging)
 
 Staging workflow:
 - Input file 
@@ -32,21 +33,18 @@ Staging workflow:
 - Transition => Rename to final mp4 file
 - Replication => Copy-To => Move-To
 
-Input file handling / delete_original
---------------
-- if delete_original = False then a rename operation automatically kicks in that appends ".recoded" to the input file
-
 h264 Preset and Quality
 --------------
 There are 2 new options in autoProcess.ini available for specifying preset and quality during conversions:
-- meks-video-quality = 20
-- meks-h264-preset = medium
+- `meks-video-quality = 20`
+- `meks-h264-preset = medium`
+
 Note: If video-bitrate was specified then this turns into ffmpeg -maxrate
 Reference: https://trac.ffmpeg.org/wiki/Encode/H.264
 
 Editing of Metadata
 --------------
-Using meks-metadata in autoProcess.ini ffmpeg can be called using -metadata to edit/change metadata during conversion.
+Using `meks-metadata` in autoProcess.ini ffmpeg can be called using -metadata to edit/change metadata during conversion.
 
 Recursive mass-processing
 --------------
@@ -56,11 +54,11 @@ However the processor walks the complete hierarchy below of this folder.
 If you are like me and have all sorts of stuff in your incoming/download folder and don't want to have the converter attempt to process eg ISO images or EXE files, then a full hierarchy walk is pointless.
 
 Therefore autoProcess.ini now supports specifying:
-- meks-walk-ignore = <ignore-files> (eg: recode.ignore,ignore.part,ignore.skip)
+- `meks-walk-ignore = <ignore-files>` (eg: recode.ignore,ignore.part,ignore.skip)
 During hierarchy walk the processor automatically skips a folder and all of it's subfolders and files if a file was found that matches <ignore-files>.
 
 Example, say you have the following situation:
-- meks-walk-ignore = ignore.part,recode.skip
+- `meks-walk-ignore = ignore.part,recode.skip`
 - Hierarchy as follows:
 -- Download
 -- Download/Apps - ['ignore.part']
@@ -83,7 +81,7 @@ eg: `settingsProvder().settingsMovies` or `settingsProvider().settingsTV`
 - manual.py adapted to Python logging rather than print()
 - Media file validation unified to MkvtoMp4().validSource(), takes into account ffprobe information rather than just file extensions
 - If an input file was detected as bad then move it out of the way by renaming it to ".bad"
-==============
+- If delete_original = False then a rename operation automatically kicks in that appends ".recoded" to the input file
 
 MP4 Conversion/Tagging Automation Script.
 ==============
