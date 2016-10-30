@@ -15,12 +15,12 @@ def apiPostProcess():
 	print("Triggering Sickrage Post Process")
 	api_url = getApiUrl() + "cmd=postprocess"
 	refresh = json.load(urllib.urlopen(api_url))
-	print("  %s - %s" % (refresh["message"], refresh["result"]))
 	if resultToBool(refresh["result"]):
 		print "Post Process was initiated."
 		return True
 	else:
-		print "Something went wrong, check output."
+		print "Something went wrong, output was:"
+		print(json.dumps(refresh, indent=4))
 	return False
 
 def getApiUrl():
