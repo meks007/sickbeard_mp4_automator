@@ -8,7 +8,7 @@ import logging
 from converter import Converter, FFMpegConvertError
 from extensions import valid_input_extensions, valid_output_extensions, bad_subtitle_codecs, valid_subtitle_extensions, subtitle_codec_extensions
 from babelfish import Language
-
+from mutagen.mp4 import MP4, MP4Cover
 
 class MkvtoMp4:
     def __init__(self, settings=None,
@@ -45,7 +45,7 @@ class MkvtoMp4:
                  meks_staging=True,
                  meks_stageext='part',
                  copyto=None,
-                 moveto=None,
+                 moveto=True,
                  embedsubs=True,
                  providers=['addic7ed', 'podnapisi', 'thesubdb', 'opensubtitles'],
                  permissions=int("777", 8),
@@ -175,42 +175,34 @@ class MkvtoMp4:
             self.moveBackAs(inputfile, original, "invalid")
             return False
         
-        if self.needProcessing(inputfile):
-            options = self.generateOptions(inputfile, original=original)
+        options = self.generateOptions(inputfile, original=original)
 
-            try:
-                if reportProgress:
-                    self.log.debug(json.dumps(options, sort_keys=False, indent=4))
-                else:
-                    self.log.debug(json.dumps(options, sort_keys=False, indent=4))
-            except:
-                self.log.exception("Unable to log options.")
+        try:
+            if reportProgress:
+                self.log.debug(json.dumps(options, sort_keys=False, indent=4))
+            else:
+                self.log.debug(json.dumps(options, sort_keys=False, indent=4))
+        except:
+            self.log.exception("Unable to log options.")
 
-            finaloutputfile, outputfile, inputfile = self.convert(inputfile, options, reportProgress)
-
-            if not outputfile:
-                self.log.debug("Error converting, no outputfile present.")
-                return False
+        finaloutputfile, outputfile, inputfile, processed = self.convert(inputfile, options, reportProgress)
+        if not outputfile:
+            self.log.debug("Error converting, no outputfile present.")
+            return False
         
-        else:
-            outputfile = finaloutputfile = inputfile
-            if self.output_dir is not None:
-                try:
-                    outputfile = os.path.join(self.output_dir, os.path.split(inputfile)[1])
-                    self.log.debug("Outputfile set to %s." % outputfile)
-                    if not outputfile == inputfile:
-                        shutil.copy(inputfile, outputfile)
-                    else:
-                        delete = False
-                        rename = False
-                except Exception as e:
-                    self.log.exception("Error moving file to output directory.")
+        if not processed:
+            try:
+                self.log.debug("Outputfile set to %s." % outputfile)
+                if not outputfile == inputfile:
+                    self.removeFile(outputfile, replacement=inputfile, copyReplace=True)
+                else:
                     delete = False
                     rename = False
-            else:
-                rename = False
+            except Exception as e:
+                self.log.exception("Error moving file to output directory.")
                 delete = False
-
+                rename = False
+        
         if self.validSource(outputfile) == True:
             self.log.info("Successful conversion of %s!" % (inputfile))
             self.log.debug("Conversion successful: %s => %s" % (inputfile, outputfile))
@@ -663,17 +655,15 @@ class MkvtoMp4:
         if vcodec == "h264qsv" and info.video.codec.lower() == "h264" and self.qsv_decoder and (info.video.video_level / 10) < 5:
             options['preopts'].extend(['-vcodec', 'h264_qsv'])
 
-        # meks customization - start
-        #in h264, drop the constant bitrate and use the recommended quality settings.  ffmpeg default is 23 but our default is 20.
+        # in h264, drop the constant bitrate and use the recommended quality settings.  ffmpeg default is 23 but our default is 20.
         if vcodec == "h264":
             del options['video']['bitrate']
             options['video']['quality'] = self.meks_video_quality if self.meks_video_quality else 23
             options['video']['preset'] = self.meks_h264_preset if self.meks_h264_preset else 'medium'
-            if self.video_bitrate is not None:  #set maximum bitrate if it's specified
+            if self.video_bitrate is not None:
                 options['video']['maxbitrate'] = self.video_bitrate
         if self.meks_metadata:
             options['video']['metadata'] = self.meks_metadata
-        # meks customization - end
         
         # Add width option
         if vwidth:
@@ -689,7 +679,8 @@ class MkvtoMp4:
     # Encode a new file based on selected options, built in naming conflict resolution
     def convert(self, inputfile, options, reportProgress=False):
         self.log.info("Starting conversion.")
-
+        
+        processed = False
         input_dir, filename, input_extension = self.parseFile(inputfile)
         output_dir = input_dir if self.output_dir is None else self.output_dir
         try:
@@ -722,37 +713,39 @@ class MkvtoMp4:
                     outputfile = os.path.join(output_dir, filename + "(" + str(i) + ")." + self.output_extension)
                     i += i
                 self.log.debug("Unable to rename inputfile. Setting output file name to %s." % outputfile)
-
-        conv = Converter(self.FFMPEG_PATH, self.FFPROBE_PATH).convert(inputfile, outputfile, options, timeout=None, preopts=options['preopts'], postopts=options['postopts'])
-
-        try:
-            for timecode in conv:
-                if reportProgress:
-                    try:
-                        sys.stdout.write('\r')
-                        sys.stdout.write('[{0}] {1}%'.format('#' * (timecode / 10) + ' ' * (10 - (timecode / 10)), timecode))
-                    except:
-                        sys.stdout.write(str(timecode))
-                    sys.stdout.flush()
-
-            self.log.info(" - done")
-            self.log.info("%s created." % outputfile)
-
+    
+        if self.needProcessing(inputfile):
+            conv = Converter(self.FFMPEG_PATH, self.FFPROBE_PATH).convert(inputfile, outputfile, options, timeout=None, preopts=options['preopts'], postopts=options['postopts'])
+    
             try:
-                os.chmod(outputfile, self.permissions)  # Set permissions of newly created file
-            except:
-                self.log.exception("Unable to set new file permissions.")
+                for timecode in conv:
+                    if reportProgress:
+                        try:
+                            sys.stdout.write('\r')
+                            sys.stdout.write('[{0}] {1}%'.format('#' * (timecode / 10) + ' ' * (10 - (timecode / 10)), timecode))
+                        except:
+                            sys.stdout.write(str(timecode))
+                        sys.stdout.flush()
+    
+                self.log.info(" - done")
+                self.log.info("%s created." % outputfile)
+    
+                try:
+                    os.chmod(outputfile, self.permissions)  # Set permissions of newly created file
+                except:
+                    self.log.exception("Unable to set new file permissions.")
+                
+                processed = True
+            except FFMpegConvertError as e:
+                self.log.exception("Error converting file, FFMPEG error.")
+                self.log.error(e.cmd)
+                self.log.error(e.output)
+                if os.path.isfile(outputfile):
+                    self.removeFile(outputfile)
+                    self.log.error("%s deleted." % outputfile)
+                outputfile = None
 
-        except FFMpegConvertError as e:
-            self.log.exception("Error converting file, FFMPEG error.")
-            self.log.error(e.cmd)
-            self.log.error(e.output)
-            if os.path.isfile(outputfile):
-                self.removeFile(outputfile)
-                self.log.error("%s deleted." % outputfile)
-            outputfile = None
-
-        return finaloutputfile, outputfile, inputfile
+        return finaloutputfile, outputfile, inputfile, processed
 
     # Break apart a file path into the directory, filename, and extension
     def parseFile(self, path):
@@ -813,8 +806,14 @@ class MkvtoMp4:
                     return False
         return outputfile
     
+    def tvOrMovie(self, inputfile):
+        video = MP4(inputfile)
+        print(video["tvsn"])
+        
     # Makes additional copies of the input file in each directory specified in the copy_to option
     def replicate(self, process_output, relativePath=None):
+        # self.tvOrMovie(process_output['output'])
+        
         # transition from staging to final just before replication.
         # best time to transition since all conversions are already done at this point.
         try:
@@ -827,32 +826,35 @@ class MkvtoMp4:
             raise TypeError("invalid output data")
 
         files = [inputfile]
-
+        
         if self.copyto:
             self.log.debug("Copyto option is enabled.")
-            for d in self.copyto:
-                if (relativePath):
-                    d = os.path.join(d, relativePath)
-                    if not os.path.exists(d):
-                        os.makedirs(d)
-                copytofile = os.path.join(d, os.path.split(inputfile)[1])
-                try:
-                    self.removeFile(copytofile, 2, 10, inputfile, True)
-                    files.append(os.path.join(d, os.path.split(inputfile)[1]))
-                except Exception as e:
-                    self.log.exception("Attempt to copy the file has failed.")
+            for filetype in ['all']:
+                for d in self.copyto[filetype]:
+                    if (relativePath):
+                        d = os.path.join(d, relativePath)
+                        if not os.path.exists(d):
+                            os.makedirs(d)
+                    copytofile = os.path.join(d, os.path.split(inputfile)[1])
+                    if not inputfile == copytofile:
+                        try:
+                            self.removeFile(copytofile, 2, 10, inputfile, True)
+                            files.append(copytofile)
+                        except Exception as e:
+                            self.log.exception("Attempt to copy the file has failed.")
+                    else:
+                        self.log.error("Unable to copy over input file")
 
-        if self.moveto:
+        if self.moveto and self.copyto:
             self.log.debug("Moveto option is enabled.")
-            moveto = os.path.join(self.moveto, relativePath) if relativePath else self.moveto
-            if not os.path.exists(moveto):
-                os.makedirs(moveto)
-            movetofile = os.path.join(moveto, os.path.basename(inputfile))
-            try:  
-                self.removeFile(movetofile, 2, 10, inputfile, False)
-                files[0] = movetofile
-            except Exception as e:
-                self.log.exception("Attempt to move the file has failed.")
+            if len(files) > 1:
+                try:
+                    self.removeFile(files[0], 2, 10, None)
+                    del files[0]
+                except Exception as e:
+                    self.log.excepiton("Attempt to move the file has failed.")
+            else:
+                self.log.error("No copies recorded, refusing to remove output file if only one instance exists.")
         
         for filename in files:
             self.log.debug("Final output file: %s." % filename)
@@ -911,7 +913,6 @@ class MkvtoMp4:
         
         return False if os.path.isfile(filename) else True
     
-    # meks customization - start
     def moveBackAs(self, inputfile, original, addExtension="bad"):
         if not type(addExtension) in (unicode, str):
             addExtension = "bad"
@@ -929,4 +930,3 @@ class MkvtoMp4:
             self.log.debug("File moved.")
         except:
             self.log.exception("Unable to move file.")
-    # meks customization - end

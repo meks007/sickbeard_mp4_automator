@@ -60,7 +60,7 @@ class ReadSettings:
                         'threads': 'auto',
                         'output_directory': '',
                         'copy_to': '',
-                        'move_to': '',
+                        'move_to': 'True',
                         'output_extension': 'mp4',
                         'output_format': 'mp4',
                         'delete_original': 'True',
@@ -205,30 +205,34 @@ class ReadSettings:
             self.output_dir = None
         else:
             self.output_dir = os.path.normpath(self.raw(self.output_dir))  # Output directory
-        self.copyto = config.get(section, "copy_to")  # Directories to make copies of the final product
-        if self.copyto == '':
-            self.copyto = None
-        else:
-            self.copyto = self.copyto.split('|')
-            for i in range(len(self.copyto)):
-                self.copyto[i] = os.path.normpath(self.copyto[i])
-                if not os.path.isdir(self.copyto[i]):
-                    try:
-                        os.makedirs(self.copyto[i])
-                    except:
-                        log.exception("Error making directory %s." % (self.copyto[i]))
-        self.moveto = config.get(section, "move_to")  # Directory to move final product to
-        if self.moveto == '':
-            self.moveto = None
-        else:
-            self.moveto = os.path.normpath(self.moveto)
-            if not os.path.isdir(self.moveto):
-                try:
-                    os.makedirs(self.moveto)
-                except:
-                    log.exception("Error making directory %s." % (self.moveto))
-                    self.moveto = None
-
+        
+        for cptol in ['copy_to']: # Directories to copy the final file to
+            cptod = {'movie':[], 'tv':[], 'all':[]}
+            cpto = config.get(section, cptol)
+            if not cpto == '':
+                cpto  = cpto.split('|')
+                for kv in cpto:
+                    if kv[:6] == 'movie:':
+                        cptok = kv[:5]
+                        cptop = kv[6:]
+                    elif kv[:3] == 'tv:':
+                        cptok = kv[:2]
+                        cptop = kv[3:]
+                    else:
+                        cptok = "all"
+                        cptop = kv
+                    cptop = os.path.normpath(cptop)
+                    if not os.path.isdir(cptop):
+                        try:
+                            os.makedirs(cptop)
+                        except:
+                            log.exception("Error making directory %s" % cptop)
+                            continue
+                    log.debug("%s path for type '%s' added: %s" % (cptol, cptok, cptop))
+                    cptod[cptok].append(cptop)
+                self.copyto = cptod
+        self.moveto = config.getboolean(section, "move_to")  # Move instead of copy
+        
         self.output_extension = config.get(section, "output_extension")  # Output extension
         self.output_format = config.get(section, "output_format")  # Output format
         if self.output_format not in valid_formats:
@@ -336,7 +340,6 @@ class ReadSettings:
                 log.exception("Invalid video bitrate, defaulting to no video bitrate cap.")
                 self.vbitrate = None
 
-        # meks customization - start
         try:
             self.meks_staging = config.getboolean(section, 'meks-staging')
             self.meks_stageext = config.get(section, "meks-staging-extension")
@@ -358,7 +361,6 @@ class ReadSettings:
             self.meks_walk_ignore = None
         else:
             self.meks_walk_ignore = self.meks_walk_ignore.split(',')
-        # meks customization - end
         
         self.vwidth = config.get(section, "video-max-width")
         if self.vwidth == '':

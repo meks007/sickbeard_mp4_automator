@@ -380,7 +380,6 @@ def main():
             log.error("File is not in the correct format - %s" % (path))
         except:
             log.error("File is not in the correct format")
-
-
+    
 if __name__ == '__main__':
     main()

@@ -39,7 +39,7 @@ def getApiUrl():
 
 def main():
 	if 'MH_FILES' in os.environ:
-		if 'IMDBID' in os.environ:
+		if 'MH_IMDBID' in os.environ:
 			print("CouchPotato Post Processor started.")
 			apiPostProcess()
 			print("CouchPotato finished.")
