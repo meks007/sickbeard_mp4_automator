@@ -245,7 +245,8 @@ class VideoCodec(BaseCodec):
         'src_height': int,
         'filter': str,
         'pix_fmt': str,
-        'map': int
+        'map': int,
+        'metadata': str
     }
 
     def _aspect_corrections(self, sw, sh, w, h, mode):
@@ -366,6 +367,8 @@ class VideoCodec(BaseCodec):
         filters = safe['aspect_filters']
 
         optlist = ['-vcodec', self.ffmpeg_codec_name]
+        if 'metadata' in safe:
+            optlist.extend(['-metadata', str(safe['metadata'])])
         if 'map' in safe:
             optlist.extend(['-map', '0:' + str(safe['map'])])
         if 'fps' in safe:
@@ -650,6 +653,7 @@ class H264Codec(VideoCodec):
         'quality': int,  # constant rate factor, range:0(lossless)-51(worst)
         # default:23, recommended: 18-28
         # http://mewiki.project357.com/wiki/X264_Settings#profile
+        'maxbitrate': int, #default: not-set, maximum bitrate in kbps
         'profile': str,  # default: not-set, for valid values see above link
         'level': float,  # default: not-set, values range from 3.0 to 4.2
         'tune': str,  # default: not-set, for valid values see above link
@@ -676,6 +680,9 @@ class H264Codec(VideoCodec):
             optlist.extend(['-preset', safe['preset']])
         if 'quality' in safe:
             optlist.extend(['-crf', str(safe['quality'])])
+        if 'maxbitrate' in safe:
+            optlist.extend(['-maxrate', '%sk' % (str(safe['maxbitrate']))])
+            optlist.extend(['-bufsize', '%sk' % (str(safe['maxbitrate']*2))])
         if 'profile' in safe:
             optlist.extend(['-profile:v', safe['profile']])
         if 'level' in safe:
