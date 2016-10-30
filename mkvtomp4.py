@@ -39,7 +39,7 @@ class MkvtoMp4:
                  subencoding='utf-8',
                  downloadsubs=True,
                  processMP4=False,
-                 meks_video_quality='23',
+                 meks_video_quality='20',
                  meks_h264_preset='medium',
                  meks_metadata=None,
                  meks_staging=True,

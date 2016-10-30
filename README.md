@@ -1,4 +1,91 @@
 MP4 Conversion/Tagging Automation Script.
+Modifications to mdhiggins' version:
+
+NOTE:
+--------------
+This is work in progress.
+A lot of what I think is useful FOR MY NEEDS is implement. The following is an incomplete list of things open:
+- Tmdb provider needs reshaping to the new logic (Tvdb is done).
+- If launched directly from Sickrage during PostProcess via postConversion.py things are not working as expcted just yet.
+-- this is mainly due to the Staging logic not properly implemented in postConversion.py just yet.
+-- DO NOT RUN postConversion.py. Rather schedule manual.py and use the Sickrage post_process plugin to trigger TORNADO processing via SR API.
+- If using the CouchPotato plugin things are not working as expected, rather use manual.py
+-- CP API for "on-demand" triggering is not yet working, scheduled or manual processing from within CP is working normally though.
+- Generally speaking my ultimate usage pattern is to have manual.py on schedule and scavenge all new files, process them and make them available to Sickrage and CouchPotato via a 'release' folder that these 2 can monitor. As soon as manual.py finishes converting a file trigger PostProcessing in Sickrage and CouchPotato using API calls. I'm no fan of having SR and CP trigger mp4 conversions themselves in an uncontrolled fashion.
+
+That being said here goes the changes so far:
+
+Staging
+--------------
+- Convert an input-file to a part-file and only transition to mp4 just before replication (Copy-To/Move-To)
+This allows to exclude files from 3rd party apps while they're being converted.
+The part file will be transitioned after all write operations are finished (that is after conversion, tagging, relocate atoms, ...).
+
+Staging can be defined in autoProcess.ini using:
+- meks-staging = True|False (default: True; make use of the staging logic or revert to traditional processing)
+- meks-staging-extension = part (default: part; extension to append during staging)
+
+Staging workflow:
+- Input file 
+- Conversion => Outputfile + ".part" 
+- Write operations => Tagging on part-File => Atom operations (MOOV) on part-File 
+- Transition => Rename to final mp4 file
+- Replication => Copy-To => Move-To
+
+Input file handling / delete_original
+--------------
+- if delete_original = False then a rename operation automatically kicks in that appends ".recoded" to the input file
+
+h264 Preset and Quality
+--------------
+There are 2 new options in autoProcess.ini available for specifying preset and quality during conversions:
+- meks-video-quality = 20
+- meks-h264-preset = medium
+Note: If video-bitrate was specified then this turns into ffmpeg -maxrate
+Reference: https://trac.ffmpeg.org/wiki/Encode/H.264
+
+Editing of Metadata
+--------------
+Using meks-metadata in autoProcess.ini ffmpeg can be called using -metadata to edit/change metadata during conversion.
+
+Recursive mass-processing
+--------------
+The manual processor (manual.py) has an option to specify an input folder rather than a file (nothing new).
+However the processor walks the complete hierarchy below of this folder.
+
+If you are like me and have all sorts of stuff in your incoming/download folder and don't want to have the converter attempt to process eg ISO images or EXE files, then a full hierarchy walk is pointless.
+
+Therefore autoProcess.ini now supports specifying:
+- meks-walk-ignore = <ignore-files> (eg: recode.ignore,ignore.part,ignore.skip)
+During hierarchy walk the processor automatically skips a folder and all of it's subfolders and files if a file was found that matches <ignore-files>.
+
+Example, say you have the following situation:
+- meks-walk-ignore = ignore.part,recode.skip
+- Hierarchy as follows:
+-- Download
+-- Download/Apps - ['ignore.part']
+-- Download/Videos
+-- Download/ISO - ['recode.skip']
+A hierarchy walk would then skip all files and subfolders in Apps/* and ISO/* and only allow processing of files directly in Download as well as Videos/*
+
+Post processing scripts extended:
+--------------
+- Fire Sickrage PostProcessor using API
+- Dump ffprobe data to log after conversion (for keeping a log of conversions)
+
+Misc changes
+--------------
+- Access to autoSettings.ini is unified to
+`from readSettings import settingsProvider`
+`settingsProvider().defaultSettings`
+This can be extended using multiple providers for multiple configurations (say: different configs for Movies and TV shows)
+eg: `settingsProvder().settingsMovies` or `settingsProvider().settingsTV`
+- manual.py adapted to Python logging rather than print()
+- Media file validation unified to MkvtoMp4().validSource(), takes into account ffprobe information rather than just file extensions
+- If an input file was detected as bad then move it out of the way by renaming it to ".bad"
+==============
+
+MP4 Conversion/Tagging Automation Script.
 ==============
 
 **Automatically converts media files downloaded by various programs to mp4 files, and tags them with the appropriate metadata from theTVDB or TMDB.**
