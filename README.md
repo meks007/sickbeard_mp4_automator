@@ -79,6 +79,7 @@ eg: `settingsProvder().settingsMovies` or `settingsProvider().settingsTV`
 - Media file validation unified to MkvtoMp4().validSource(), takes into account ffprobe information rather than just file extensions
 - If an input file was detected as bad then move it out of the way by renaming it to ".bad"
 - If `delete_original = False` then a rename operation automatically kicks in that appends ".recoded" to the input file. It's either delete or rename, leaving it untouched is no option.
+- `Move-to=True|False` is now boolean (default: False) and complements Copy-to. If Copy-to is not empty and Move-to is True then the copy logic turns into moves.
 
 Bugs/Caveats
 --------------
