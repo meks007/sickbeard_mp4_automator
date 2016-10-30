@@ -9,7 +9,6 @@ A lot of what I think is useful FOR MY NEEDS is implemented. The following is an
 - If launched directly from Sickrage during PostProcess via postConversion.py things are not working as expcted just yet. This is mainly due to the Staging logic not properly implemented in postConversion.py just yet. 
 - DO NOT RUN postConversion.py. Rather schedule manual.py and use the Sickrage post_process plugin to trigger TORNADO processing via SR API (you only need to configure Sickrage in autoProcess.ini as usual, everything else happens on it's own)
 - If using the CouchPotato plugin things are not working as expected, rather use manual.py.
-- CP API for "on-demand" triggering is not yet working (there is no plugin the likes of sickrage for cp yet). Scheduled or manual processing from within CP is working normally though.
 - Generally speaking my ultimate usage pattern is to have manual.py on schedule, scavenge all new files, process them and make them available to Sickrage and CouchPotato via a 'release' folder (propagated during replication via move-to option) that these 2 can monitor. As soon as manual.py finishes converting a file a trigger should fire PostProcessing in Sickrage and CouchPotato using API calls. I'm no fan of having SR and CP trigger mp4 conversions themselves in an uncontrolled fashion.
 
 That being said here goes the changes so far:
@@ -65,6 +64,7 @@ Download/ISO - ['recode.skip']`
 
 Post processing scripts extended:
 --------------
+- Fire CouchPotato Renamer using API
 - Fire Sickrage PostProcessor using API
 - Dump ffprobe data to log after conversion (for keeping a log of conversions)
 
