@@ -36,6 +36,9 @@ class Tvdb_mp4:
                 self.HD = None
                 self.original = original
 
+                self.provider = 'tvdb'
+                self.providerid = show
+                
                 # Gather information from theTVDB
                 self.showdata = self.tvdb_show[self.show]
                 self.seasondata = self.showdata[self.season]
@@ -100,9 +103,9 @@ class Tvdb_mp4:
                         video["covr"] = [MP4Cover(cover, MP4Cover.FORMAT_JPEG)]  # jpeg poster
             
             if self.original:
-                video["\xa9too"] = "mdh-ffmpeg-meks" #"MDH:" + os.path.basename(self.original)
+                video["\xa9too"] = ("meks-ffmpeg tvshow [%s-%s]" % (self.provider, self.providerid))
             else:
-                video["\xa9too"] = "mdh-ffmpeg-meks" #"MDH:" + os.path.basename(mp4Path)
+                video["\xa9too"] = ("meks-ffmpeg tvshow [%s-%s]" % (self.provider, self.providerid))
             
             MP4(mp4Path).delete(mp4Path)
             
@@ -112,7 +115,6 @@ class Tvdb_mp4:
                     video.save()
                     self.log.debug("Tags written successfully.")
                     return True
-                    break
                 except IOError as e:
                     self.log.exception("There was a problem writing the tags. Retrying.")
                     time.sleep(5)

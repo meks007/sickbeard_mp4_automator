@@ -32,8 +32,11 @@ class tmdb_mp4:
 
         if tmdbid is False and imdbid.startswith('tt') is not True:
             imdbid = 'tt' + imdbid
-            self.log.debug("Correcting imdbid to %s." % imdbid)
-
+            self.log.debug("Correcting IMDB ID to %s." % imdbid)
+        
+        self.provider = 'tmdb' if tmdbid else 'imdb'
+        self.providerid = imdbid
+        
         self.original = original
         for i in range(3):
             try:
@@ -96,11 +99,12 @@ class tmdb_mp4:
                         video["covr"] = [MP4Cover(cover, MP4Cover.FORMAT_PNG)]  # png poster
                     else:
                         video["covr"] = [MP4Cover(cover, MP4Cover.FORMAT_JPEG)]  # jpeg poster
+
             if self.original:
-                video["\xa9too"] = "mdh-ffmpeg-meks" #"MDH:" + os.path.basename(self.original)
+                video["\xa9too"] = ("meks-ffmpeg movie [%s-%s]" % (self.provider, self.providerid))
             else:
-                video["\xa9too"] = "mdh-ffmpeg-meks" #"MDH:" + os.path.basename(mp4Path)
-    
+                video["\xa9too"] = ("meks-ffmpeg movie [%s-%s]" % (self.provider, self.providerid))
+            
             for i in range(3):
                 try:
                     self.log.debug("Trying to write tags.")

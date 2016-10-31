@@ -5,10 +5,15 @@ import json
 import sys
 import shutil
 import logging
+import locale
+import signal
+from subprocess import Popen, PIPE
 from converter import Converter, FFMpegConvertError
 from extensions import valid_input_extensions, valid_output_extensions, bad_subtitle_codecs, valid_subtitle_extensions, subtitle_codec_extensions
 from babelfish import Language
 from mutagen.mp4 import MP4, MP4Cover
+
+console_encoding = locale.getdefaultlocale()[1] or 'UTF-8'
 
 class MkvtoMp4:
     def __init__(self, settings=None,
@@ -808,12 +813,35 @@ class MkvtoMp4:
         return outputfile
     
     def tvOrMovie(self, inputfile):
-        video = MP4(inputfile)
-        print(video["tvsn"])
+        cmds = [self.FFPROBE_PATH, '-v', 'quiet', '-print_format', 'json', '-show_format', inputfile]
+        p = Popen(cmds, shell=False, stdin=PIPE, stdout=PIPE, stderr=PIPE, close_fds=(os.name != 'nt'), startupinfo=None)
+        stdout_data, _ = p.communicate()
+        stdout_data = stdout_data.decode(console_encoding, errors='ignore')
+        data = json.loads(stdout_data)
+        try:
+            if "encoder" in data["format"]["tags"]:
+                if "imdb" in data["format"]["tags"]["encoder"]:
+                    self.log.debug("Identified video as movie with IMDB ID.")
+                    return 1
+                elif "tmdb" in data["format"]["tags"]["encoder"]:
+                    self.log.debug("Identified video as movie with TMDB ID.")
+                    return 2
+                elif "tvdb" in data["format"]["tags"]["encoder"]:
+                    self.log.debug("Identified video as TV show with TvDB ID.")
+                    return 3
+            elif "show" in data["format"]["tags"]:
+                self.log.debug("Identified video as TV show without ID.")
+                return 3
+            else:
+                self.log.debug("Unable to properly identify video, falling back to movie without ID.")
+                return 1
+        except:
+            self.log.exception("Error determining if file is TV or Movie.")
+        return 0
         
     # Makes additional copies of the input file in each directory specified in the copy_to option
     def replicate(self, process_output, relativePath=None):
-        # self.tvOrMovie(process_output['output'])
+        tmkey = self.tvOrMovie(process_output['output'])
         
         # transition from staging to final just before replication.
         # best time to transition since all conversions are already done at this point.
