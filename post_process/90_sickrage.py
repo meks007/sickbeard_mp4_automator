@@ -4,23 +4,23 @@ import sys
 import json
 import urllib
 
-from pprint import pprint
-
-sys.path.append("/opt/share/sickbeard_mp4_automator")
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 from readSettings import settingsProvider
+from _utils import LoggingAdapter
 
 srconfig = settingsProvider().defaultSettings.Sickrage
+log = LoggingAdapter.getLogger()
 
 def apiPostProcess():
-	print("Triggering Sickrage Post Process")
-	api_url = getApiUrl() + "cmd=postprocess"
+	log.info("Triggering Sickrage Post Process")
+	api_url = getApiUrl() + "cmd=postprocess&is_priority=1"
 	refresh = json.load(urllib.urlopen(api_url))
 	if resultToBool(refresh["result"]):
-		print "Post Process was initiated."
+		log.debug("Post Process was initiated.")
 		return True
 	else:
-		print "Something went wrong, output was:"
-		print(json.dumps(refresh, indent=4))
+		log.error("Something went wrong, output was:")
+		log.error(json.dumps(refresh, indent=4))
 	return False
 
 def getApiUrl():
@@ -45,13 +45,13 @@ def resultToBool(result):
 def main():
 	if 'MH_FILES' in os.environ:
 		if 'MH_TVDBID' in os.environ:
-			print("Sickrage Post Processor started.")
+			log.info("Sickrage Post Processor started.")
 			apiPostProcess()
-			print("Sickrage finished.")
+			log.info("Sickrage finished.")
 		else:
-			print("Sickrage: Not a TV show.")
+			log.debug("Sickrage: Not a TV show.")
 	else:
-		print("Sickrage: No processed files submitted.")
+		log.info("Sickrage: No processed files submitted.")
 
 if __name__ == "__main__":
     main()

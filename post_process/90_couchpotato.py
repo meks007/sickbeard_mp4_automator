@@ -4,23 +4,23 @@ import sys
 import json
 import urllib
 
-from pprint import pprint
-
-sys.path.append("/opt/share/sickbeard_mp4_automator")
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 from readSettings import settingsProvider
+from _utils import LoggingAdapter
 
 cpconfig = settingsProvider().defaultSettings.CP
+log = LoggingAdapter.getLogger()
 
 def apiPostProcess():
-	print("Triggering CouchPotato Renamer")
+	log.info("Triggering CouchPotato Renamer")
 	api_url = getApiUrl() + "renamer.scan"
 	refresh = json.load(urllib.urlopen(api_url))
 	if refresh["success"]:
-		print "Renamer was triggered."
+		log.debug("Renamer was triggered.")
 		return True
 	else:
-		print "Something went wrong, output was:"
-		print(json.dumps(refresh, indent=4))
+		log.error("Something went wrong, output was:")
+		log.error(json.dumps(refresh, indent=4))
 	return False
 
 def getApiUrl():
@@ -40,13 +40,13 @@ def getApiUrl():
 def main():
 	if 'MH_FILES' in os.environ:
 		if 'MH_IMDBID' in os.environ:
-			print("CouchPotato Post Processor started.")
+			log.info("CouchPotato Post Processor started.")
 			apiPostProcess()
-			print("CouchPotato finished.")
+			log.info("CouchPotato finished.")
 		else:
-			print("CouchPotato: Not a movie.")
+			log.debug("CouchPotato: Not a movie.")
 	else:
-		print("CouchPotato: No processed files submitted.")
+		log.info("CouchPotato: No processed files submitted.")
 	
 if __name__ == "__main__":
     main()

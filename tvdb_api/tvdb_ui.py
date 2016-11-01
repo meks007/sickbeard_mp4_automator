@@ -47,6 +47,7 @@ __version__ = "1.10"
 
 import sys
 import logging
+from _utils import LoggingAdapter
 import warnings
 
 from .tvdb_exceptions import tvdb_userabort
@@ -61,7 +62,7 @@ else:
 
 
 def log():
-    return logging.getLogger(__name__)
+    return LoggingAdapter.getLogger(__name__)
 
 class BaseUI:
     """Default non-interactive UI, which auto-selects first results
@@ -72,7 +73,7 @@ class BaseUI:
             warnings.warn("the UI's log parameter is deprecated, instead use\n"
                 "use import logging; logging.getLogger('ui').info('blah')\n"
                 "The self.log attribute will be removed in the next version")
-            self.log = logging.getLogger(__name__)
+            self.log = LoggingAdapter.getLogger(__name__)
 
     def selectSeries(self, allSeries):
         return allSeries[0]

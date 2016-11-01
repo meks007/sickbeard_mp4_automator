@@ -7,6 +7,8 @@ try:
 except ImportError:
     import ConfigParser as configparser
 import logging
+from _utils import LoggingAdapter
+
 from extensions import *
 from babelfish import Language
 
@@ -18,7 +20,7 @@ class ReadSettings:
         if logger:
             log = logger
         else:
-            log = logging.getLogger(__name__)
+            log = LoggingAdapter.getLogger(__name__)
 
         # Setup encoding to avoid UTF-8 errors
         if sys.version[0] == '2':
@@ -206,9 +208,8 @@ class ReadSettings:
         else:
             self.output_dir = os.path.normpath(self.raw(self.output_dir))  # Output directory
         
-        self.copyto = None
-        for cptol in ['copy_to']: # Directories to copy the final file to
-            cptod = {'movie':[], 'tv':[], 'all':[]}
+        cptod = {'movie':[], 'tv':[], 'all':[]}
+        for cptol in ['copy_to']:
             cpto = config.get(section, cptol)
             if not cpto == '':
                 cpto  = cpto.split('|')
@@ -231,7 +232,7 @@ class ReadSettings:
                             continue
                     log.debug("%s path for type '%s' added: %s" % (cptol, cptok, cptop))
                     cptod[cptok].append(cptop)
-                self.copyto = cptod
+        self.copyto = cptod  # Directories to copy the final file to
         self.moveto = config.getboolean(section, "move_to")  # Move instead of copy
         
         self.output_extension = config.get(section, "output_extension")  # Output extension
@@ -290,7 +291,7 @@ class ReadSettings:
         self.subproviders = config.get(section, 'sub-providers').lower()
         if self.subproviders == '':
             self.downloadsubs = False
-            log.warning("You must specifiy at least one subtitle provider to downlaod subs automatically, subtitle downloading disabled.")
+            log.warning("You must specifiy at least one subtitle provider to download subs automatically, subtitle downloading disabled.")
         else:
             self.subproviders = self.subproviders.lower().replace(' ', '').split(',')
 

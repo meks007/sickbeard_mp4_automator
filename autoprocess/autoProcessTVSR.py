@@ -9,6 +9,7 @@ from __future__ import with_statement
 import os.path
 import sys
 import logging
+from _utils import LoggingAdapter
 
 sys.path.insert(1, os.path.abspath(os.path.join(os.path.dirname(__file__), 'lib')))
 
@@ -19,7 +20,7 @@ def processEpisode(dir_to_process, settings, org_NZB_name=None, status=None, log
     if logger:
         log = logger
     else:
-        log = logging.getLogger(__name__)
+        log = LoggingAdapter.getLogger(__name__)
 
     try:
         import requests

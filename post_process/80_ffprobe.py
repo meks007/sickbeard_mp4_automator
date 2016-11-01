@@ -5,12 +5,13 @@ import json
 import locale
 import signal
 from subprocess import Popen, PIPE
-from pprint import pprint
 
-sys.path.append("/opt/share/sickbeard_mp4_automator")
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 from readSettings import settingsProvider
+from _utils import LoggingAdapter
 
 console_encoding = locale.getdefaultlocale()[1] or 'UTF-8'
+log = LoggingAdapter.getLogger()
 
 def probe(ffprobe, filename):
 	cmds = [ffprobe, '-v', 'quiet', '-print_format', 'json', '-show_format', '-show_streams', filename]
@@ -24,28 +25,25 @@ def probe(ffprobe, filename):
 
 def main():
 	if 'MH_FILES' in os.environ:
-		print("FFprobe dump of processed files")
+		log.info("FFprobe dump of processed files")
 		
 		settings = settingsProvider().defaultSettings
 		
-		print
 		files = json.loads(os.environ.get('MH_FILES'))
 		for filename in files:
-			print("Information for %s" % filename)
+			log.debug("Information for %s" % filename)
 			
 			info = probe(settings.ffprobe, filename)
 			if info is not None:
 				if 'streams' in info and 'format' in info:
-					print(json.dumps(info, indent=4, sort_keys=True))
+					log.debug(json.dumps(info, indent=4, sort_keys=True))
 				else:
-					print("WARNING - No valid video metadata found in file. This is UNUSUAL!")
+					log.warning("WARNING - No valid video metadata found in file. This is UNUSUAL!")
 			else:
-				print("File appears invalid.")
-			
-			print
-		print("FFprobe finished.")
+				log.error("File appears invalid.")
+		log.info("FFprobe finished.")
 	else:
-		print("FFprobe: No processed files submitted.")
+		log.info("FFprobe: No processed files submitted.")
 
 if __name__ == "__main__":
     main()

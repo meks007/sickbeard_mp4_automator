@@ -26,7 +26,7 @@ except ImportError:
     from urllib import urlencode
 import os.path
 import logging
-
+from _utils import LoggingAdapter
 
 class AuthURLOpener(FancyURLopener):
     def __init__(self, user, pw):
@@ -53,7 +53,7 @@ def processEpisode(dirName, settings, nzbName=None, logger=None):
     if logger:
         log = logger
     else:
-        log = logging.getLogger(__name__)
+        log = LoggingAdapter.getLogger(__name__)
 
     host = settings.Sickbeard['host']
     port = settings.Sickbeard['port']

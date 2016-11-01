@@ -35,6 +35,7 @@ import getpass
 import tempfile
 import warnings
 import logging
+from _utils import LoggingAdapter
 import datetime
 import zipfile
 
@@ -63,8 +64,9 @@ from .tvdb_exceptions import (tvdb_error, tvdb_userabort, tvdb_shownotfound,
 
 lastTimeout = None
 
-def log():
-    return logging.getLogger("tvdb_api")
+log = logger = LoggingAdapter.getLogger("tvdb_api")
+#def log():
+#    return logger
 
 
 class ShowContainer(dict):
@@ -476,7 +478,7 @@ class Tvdb:
 
             elif isinstance(cache, urllib2.OpenerDirector):
                 # If passed something from urllib2.build_opener, use that
-                log().debug("Using %r as urlopener" % cache)
+                log.debug("Using %r as urlopener" % cache)
                 self.config['cache_enabled'] = True
                 self.urlopener = cache
 
@@ -560,7 +562,7 @@ class Tvdb:
             if 'application/zip' in resp.headers.get("Content-Type", ''):
                 try:
                     # TODO: The zip contains actors.xml and banners.xml, which are currently ignored [GH-20]
-                    log().debug("We recived a zip file unpacking now ...")
+                    log.debug("We recived a zip file unpacking now ...")
                     from io import BytesIO
                     myzipfile = zipfile.ZipFile(BytesIO(resp.content))
                     return myzipfile.read('%s.xml' % language)
@@ -572,15 +574,15 @@ class Tvdb:
         else:
             global lastTimeout
             try:
-                log().debug("Retrieving URL %s" % url)
+                log.debug("Retrieving URL %s" % url)
                 resp = self.urlopener.open(url)
                 if 'x-local-cache' in resp.headers:
-                    log().debug("URL %s was cached in %s" % (
+                    log.debug("URL %s was cached in %s" % (
                         url,
                         resp.headers['x-local-cache'])
                     )
                     if recache:
-                        log().debug("Attempting to recache %s" % url)
+                        log.debug("Attempting to recache %s" % url)
                         resp.recache()
             except (IOError, urllib2.URLError) as errormsg:
                 if not str(errormsg).startswith('HTTP Error'):
@@ -602,7 +604,7 @@ class Tvdb:
             if 'application/zip' in resp.headers.get("Content-Type", ''):
                 try:
                     # TODO: The zip contains actors.xml and banners.xml, which are currently ignored [GH-20]
-                    log().debug("We recived a zip file unpacking now ...")
+                    log.debug("We recived a zip file unpacking now ...")
                     from StringIO import StringIO
                     zipdata = StringIO()
                     zipdata.write(resp.read())
@@ -695,7 +697,7 @@ class Tvdb:
         and returns the result list
         """
         series = url_quote(series.encode("utf-8"))
-        log().debug("Searching for show %s" % series)
+        log.debug("Searching for show %s" % series)
         seriesEt = self._getetsrc(self.config['url_getSeries'] % (series))
         allSeries = []
         for series in seriesEt:
@@ -704,7 +706,7 @@ class Tvdb:
             result['lid'] = self.config['langabbv_to_id'][result['language']]
             if 'aliasnames' in result:
                 result['aliasnames'] = result['aliasnames'].split("|")
-            log().debug('Found series %(seriesname)s' % result)
+            log.debug('Found series %(seriesname)s' % result)
             allSeries.append(result)
         
         return allSeries
@@ -718,18 +720,18 @@ class Tvdb:
         allSeries = self.search(series)
 
         if len(allSeries) == 0:
-            log().debug('Series result returned zero')
+            log.debug('Series result returned zero')
             raise tvdb_shownotfound("Show-name search returned zero results (cannot find show on TVDB)")
 
         if self.config['custom_ui'] is not None:
-            log().debug("Using custom UI %s" % (repr(self.config['custom_ui'])))
+            log.debug("Using custom UI %s" % (repr(self.config['custom_ui'])))
             ui = self.config['custom_ui'](config = self.config)
         else:
             if not self.config['interactive']:
-                log().debug('Auto-selecting first search result using BaseUI')
+                log.debug('Auto-selecting first search result using BaseUI')
                 ui = BaseUI(config = self.config)
             else:
-                log().debug('Interactively selecting show using ConsoleUI')
+                log.debug('Interactively selecting show using ConsoleUI')
                 ui = ConsoleUI(config = self.config)
 
         return ui.selectSeries(allSeries)
@@ -752,7 +754,7 @@ class Tvdb:
 
         This interface will be improved in future versions.
         """
-        log().debug('Getting season banners for %s' % (sid))
+        log.debug('Getting season banners for %s' % (sid))
         bannersEt = self._getetsrc( self.config['url_seriesBanner'] % (sid) )
         banners = {}
         for cur_banner in bannersEt.findall('Banner'):
@@ -780,7 +782,7 @@ class Tvdb:
             for k, v in list(banners[btype][btype2][bid].items()):
                 if k.endswith("path"):
                     new_key = "_%s" % (k)
-                    log().debug("Transforming %s to %s" % (k, new_key))
+                    log.debug("Transforming %s to %s" % (k, new_key))
                     new_url = self.config['url_artworkPrefix'] % (v)
                     banners[btype][btype2][bid][new_key] = new_url
 
@@ -810,7 +812,7 @@ class Tvdb:
         Any key starting with an underscore has been processed (not the raw
         data from the XML)
         """
-        log().debug("Getting actors for %s" % (sid))
+        log.debug("Getting actors for %s" % (sid))
         actorsEt = self._getetsrc(self.config['url_actorsInfo'] % (sid))
 
         cur_actors = Actors()
@@ -835,12 +837,12 @@ class Tvdb:
         """
 
         if self.config['language'] is None:
-            log().debug('Config language is none, using show language')
+            log.debug('Config language is none, using show language')
             if language is None:
                 raise tvdb_error("config['language'] was None, this should not happen")
             getShowInLanguage = language
         else:
-            log().debug(
+            log.debug(
                 'Configured language %s override show language of %s' % (
                     self.config['language'],
                     language
@@ -849,7 +851,7 @@ class Tvdb:
             getShowInLanguage = self.config['language']
 
         # Parse show information
-        log().debug('Getting all series data for %s' % (sid))
+        log.debug('Getting all series data for %s' % (sid))
         seriesInfoEt = self._getetsrc(
             self.config['url_seriesInfo'] % (sid, getShowInLanguage)
         )
@@ -874,7 +876,7 @@ class Tvdb:
             self._parseActors(sid)
 
         # Parse episode data
-        log().debug('Getting all episodes of %s' % (sid))
+        log.debug('Getting all episodes of %s' % (sid))
 
         if self.config['useZip']:
             url = self.config['url_epInfo_zip'] % (sid, language)
@@ -886,7 +888,7 @@ class Tvdb:
         for cur_ep in epsEt.findall("Episode"):
 
             if self.config['dvdorder']:
-                log().debug('Using DVD ordering.')
+                log.debug('Using DVD ordering.')
                 use_dvd = cur_ep.find('DVD_season').text != None and cur_ep.find('DVD_episodenumber').text != None
             else:
                 use_dvd = False
@@ -897,9 +899,9 @@ class Tvdb:
                 elem_seasnum, elem_epno = cur_ep.find('SeasonNumber'), cur_ep.find('EpisodeNumber')
 
             if elem_seasnum is None or elem_epno is None:
-                log().warning("An episode has incomplete season/episode number (season: %r, episode: %r)" % (
+                log.warning("An episode has incomplete season/episode number (season: %r, episode: %r)" % (
                     elem_seasnum, elem_epno))
-                log().debug(
+                log.debug(
                     " ".join(
                         "%r is %r" % (child.tag, child.text) for child in cur_ep.getchildren()))
                 # TODO: Should this happen?
@@ -925,13 +927,13 @@ class Tvdb:
         the correct SID.
         """
         if name in self.corrections:
-            log().debug('Correcting %s to %s' % (name, self.corrections[name]) )
+            log.debug('Correcting %s to %s' % (name, self.corrections[name]) )
             sid = self.corrections[name]
         else:
-            log().debug('Getting show %s' % (name))
+            log.debug('Getting show %s' % (name))
             selected_series = self._getSeries( name )
             sname, sid = selected_series['seriesname'], selected_series['id']
-            log().debug('Got %(seriesname)s, id %(id)s' % selected_series)
+            log.debug('Got %(seriesname)s, id %(id)s' % selected_series)
 
             self.corrections[name] = sid
             self._getShowData(selected_series['id'], selected_series['language'])
@@ -950,7 +952,7 @@ class Tvdb:
         
         key = key.lower() # make key lower case
         sid = self._nameToSid(key)
-        log().debug('Got series id %s' % (sid))
+        log.debug('Got series id %s' % (sid))
         return self.shows[sid]
 
     def __repr__(self):

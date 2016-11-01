@@ -11,6 +11,7 @@ except ImportError:
     from io import StringIO
 import tempfile
 import time
+from _utils import LoggingAdapter
 import logging
 from tvdb_api.tvdb_api import Tvdb
 from mutagen.mp4 import MP4, MP4Cover
@@ -24,7 +25,7 @@ class Tvdb_mp4:
         if logger:
             self.log = logger
         else:
-            self.log = logging.getLogger(__name__)
+            self.log = LoggingAdapter.getLogger(__name__)
 
         for i in range(3):
             try:

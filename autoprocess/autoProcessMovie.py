@@ -8,6 +8,7 @@ import shutil
 import time
 import json
 import logging
+from _utils import LoggingAdapter
 import requests
 
 
@@ -36,7 +37,7 @@ def process(dirName, settings, nzbName=None, status=0, logger=None):
     if logger:
         log = logger
     else:
-        log = logging.getLogger(__name__)
+        log = LoggingAdapter.getLogger(__name__)
 
     status = int(status)
 

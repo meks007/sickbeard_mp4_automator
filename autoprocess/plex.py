@@ -4,6 +4,7 @@ try:
 except ImportError:
     from urllib import urlopen
 import logging
+from _utils import LoggingAdapter
 from xml.dom import minidom
 
 
@@ -11,7 +12,7 @@ def refreshPlex(settings, source_type, logger=None):
     if logger:
         log = logger
     else:
-        log = logging.getLogger(__name__)
+        log = LoggingAdapter.getLogger(__name__)
 
     host = settings.Plex['host']
     port = settings.Plex['port']

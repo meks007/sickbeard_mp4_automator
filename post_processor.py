@@ -1,9 +1,9 @@
 import os
 import logging
 import json
+from _utils import LoggingAdapter
 from subprocess import Popen, PIPE
 from extensions import bad_post_files, bad_post_extensions
-
 
 class PostProcessor:
     def __init__(self, files, logger=None):
@@ -11,7 +11,7 @@ class PostProcessor:
         if logger:
             self.log = logger
         else:
-            self.log = logging.getLogger(__name__)
+            self.log = LoggingAdapter.getLogger(__name__)
 
         self.log.debug("Output: %s." % files)
 
@@ -54,8 +54,8 @@ class PostProcessor:
                 command = self.run_script_command(script)
                 self.log.info("Running script '%s'." % (script))
                 stdout, stderr = command.communicate()
-                if stdout: 
-                    self.log.debug("Stdout: %s" % stdout)
+                #if stdout: 
+                #    self.log.debug("Stdout: %s" % stdout)
                 if stderr:
                     self.log.debug("Stderr: %s" % stderr)
             except Exception as e:

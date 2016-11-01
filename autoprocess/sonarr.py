@@ -1,6 +1,7 @@
 import sys
 import os
 import logging
+from _utils import LoggingAdapter
 import json
 
 
@@ -17,7 +18,7 @@ def processEpisode(dirName, settings, nzbGet=False, logger=None):
     if logger:
         log = logger
     else:
-        log = logging.getLogger(__name__)
+        log = LoggingAdapter.getLogger(__name__)
 
     log.info("%sSonarr notifier started." % infoprefix)
 

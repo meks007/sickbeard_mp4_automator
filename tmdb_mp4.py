@@ -11,6 +11,7 @@ except ImportError:
 import tempfile
 import time
 import logging
+from _utils import LoggingAdapter
 from tmdb_api import tmdb
 from mutagen.mp4 import MP4, MP4Cover
 from extensions import valid_output_extensions, valid_poster_extensions, tmdb_api_key
@@ -23,7 +24,7 @@ class tmdb_mp4:
         if logger:
             self.log = logger
         else:
-            self.log = logging.getLogger(__name__)
+            self.log = LoggingAdapter.getLogger(__name__)
 
         if tmdbid:
             self.log.debug("TMDB ID: %s." % tmdbid)

@@ -7,8 +7,9 @@ import signal
 from subprocess import Popen, PIPE
 import logging
 import locale
+from _utils import LoggingAdapter
 
-logger = logging.getLogger(__name__)
+logger = LoggingAdapter.getLogger(__name__)
 
 console_encoding = locale.getdefaultlocale()[1] or 'UTF-8'
 
