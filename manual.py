@@ -9,8 +9,9 @@ import argparse
 import struct
 
 import logging
-from logging.config import fileConfig
-fileConfig(os.path.join(os.path.dirname(sys.argv[0]), 'logging.ini'), defaults={'logfilename': os.path.join(os.path.dirname(sys.argv[0]), 'info.log').replace("\\", "/")})
+from _utils import LoggingAdapter
+log = LoggingAdapter.getLogger("MANUAL", {})
+log.info("Manual processor started - using interpreter %s" % sys.executable)
 
 from readSettings import settingsProvider
 from tvdb_mp4 import Tvdb_mp4
@@ -21,18 +22,14 @@ from tvdb_api import tvdb_api
 from tmdb_api import tmdb
 from extensions import tmdb_api_key
 
-log = logging.getLogger("MANUAL")
+if sys.version[0] == "3":
+    raw_input = input
+
 logging.getLogger("subliminal").setLevel(logging.CRITICAL)
 logging.getLogger("requests").setLevel(logging.WARNING)
 logging.getLogger("enzyme").setLevel(logging.WARNING)
 logging.getLogger("qtfaststart").setLevel(logging.WARNING)
 
-if sys.version[0] == "3":
-    raw_input = input
-
-log.info("Manual processor started - using interpreter %s" % sys.executable)
-
-#settings = ReadSettings(os.path.dirname(sys.argv[0]), "autoProcess.ini", logger=log)
 settings = settingsProvider().defaultSettings
 
 def mediatype():
@@ -81,6 +78,8 @@ def getYesNo():
 
 
 def getinfo(fileName=None, silent=False, tag=True, tvdbid=None):
+    log.debug("Trying to fetch metadata information for file ...")
+    
     tagdata = None
     # Try to guess the file is guessing is enabled
     if fileName is not None:
@@ -92,7 +91,7 @@ def getinfo(fileName=None, silent=False, tag=True, tvdbid=None):
             if getYesNo():
                 return tagdata
         else:
-            print("Unable to determine identity based on filename, must enter manually")
+            log.info("Unable to determine identity based on filename, must enter manually")
         m_type = mediatype()
         if m_type is 3:
             tvdbid = getValue("Enter TVDB Series ID", True)
@@ -117,6 +116,7 @@ def getinfo(fileName=None, silent=False, tag=True, tvdbid=None):
 
 
 def guessInfo(fileName, tvdbid=None):
+    log.debug("Trying to guessit()...")
     if not settings.fullpathguess:
         fileName = os.path.basename(fileName)
     guess = guessit.guess_file_info(fileName)
