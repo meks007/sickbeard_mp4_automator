@@ -12,7 +12,7 @@ import tempfile
 import time
 import logging
 from _utils import LoggingAdapter
-from tmdb_api import tmdb
+import tmdb_api as tmdb
 from mutagen.mp4 import MP4, MP4Cover
 from extensions import valid_output_extensions, valid_poster_extensions, tmdb_api_key
 
@@ -32,9 +32,9 @@ class tmdb_mp4:
             self.settings = settingsProvider().defaultSettings
 
         if tmdbid:
-            self.log.debug("TMDB ID: %s." % tmdbid)
+            self.log.debug("TMDB ID: %s" % imdbid)
         else:
-            self.log.debug("IMDB ID: %s." % imdbid)
+            self.log.debug("IMDB ID: %s" % imdbid)
 
         if tmdbid is False and imdbid.startswith('tt') is not True:
             imdbid = 'tt' + imdbid
@@ -46,20 +46,21 @@ class tmdb_mp4:
         self.original = original
         for i in range(3):
             try:
-                tmdb.configure(tmdb_api_key, language=language)
-
-                self.movie = tmdb.Movie(imdbid)
-
+                tmdb.API_KEY = tmdb_api_key
+                self.movie = tmdb.Movies(imdbid)
+                self.movieInfo = self.movie.info(language=language)
+                self.casts = self.movie.credits()
+                self.releases = self.movie.releases()
+                
+                self.tmdbConfig = tmdb.Configuration().info()
+                
                 self.HD = None
-
-                self.title = self.movie.get_title()
-                self.genre = self.movie.get_genres()
-
-                self.shortdescription = self.movie.get_tagline()
-                self.description = self.movie.get_overview()
-
-                self.date = self.movie.get_release_date()
-
+                self.title = self.movieInfo['title']
+                self.genre = self.movieInfo['genres']
+                self.shortdescription = self.movieInfo['tagline']
+                self.description = self.movieInfo['overview']
+                self.date = self.movieInfo['release_date']
+                
                 # Generate XML tags for Actors/Writers/Directors/Producers
                 self.xml = self.xmlTags()
                 break
@@ -125,13 +126,13 @@ class tmdb_mp4:
         raise IOError
 
     def rating(self):
-        ratings = {'G': '100',
-                        'PG': '200',
-                        'PG-13': '300',
-                        'R': '400',
-                        'NC-17': '500'}
+        ratings = { 'G': '100',
+                   'PG': '200',
+                'PG-13': '300',
+                    'R': '400',
+                'NC-17': '500'}
         output = None
-        mpaa = self.movie.get_mpaa_rating()
+        mpaa = self.get_mpaa_rating()
         if mpaa in ratings:
             numerical = ratings[mpaa]
             output = 'mpaa|' + mpaa.capitalize() + '|' + numerical + '|'
@@ -144,7 +145,7 @@ class tmdb_mp4:
             self.HD = [1]
         else:
             self.HD = [0]
-
+    
     def xmlTags(self):
         # constants
         header = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\"><plist version=\"1.0\"><dict>\n"
@@ -160,25 +161,25 @@ class tmdb_mp4:
 
         # Write actors
         output.write(castheader)
-        for a in self.movie.get_cast()[:5]:
+        for a in self.get_cast()[:5]:
             if a is not None:
                 output.write("<dict><key>name</key><string>%s</string></dict>\n" % a['name'].encode('ascii', 'ignore'))
         output.write(subfooter)
         # Write screenwriters
         output.write(writerheader)
-        for w in self.movie.get_writers()[:5]:
+        for w in self.get_writers()[:5]:
             if w is not None:
                 output.write("<dict><key>name</key><string>%s</string></dict>\n" % w['name'].encode('ascii', 'ignore'))
         output.write(subfooter)
         # Write directors
         output.write(directorheader)
-        for d in self.movie.get_directors()[:5]:
+        for d in self.get_directors()[:5]:
             if d is not None:
                 output.write("<dict><key>name</key><string>%s</string></dict>\n" % d['name'].encode('ascii', 'ignore'))
         output.write(subfooter)
         # Write producers
         output.write(producerheader)
-        for p in self.movie.get_producers()[:5]:
+        for p in self.get_producers()[:5]:
             if p is not None:
                 output.write("<dict><key>name</key><string>%s</string></dict>\n" % p['name'].encode('ascii', 'ignore'))
         output.write(subfooter)
@@ -203,12 +204,44 @@ class tmdb_mp4:
         # Pulls down all the poster metadata for the correct season and sorts them into the Poster object
         if poster is None:
             try:
-                poster = urlretrieve(self.movie.get_poster("l"), os.path.join(tempfile.gettempdir(), "poster-tmdb.jpg"))[0]
+                poster = urlretrieve(self.get_poster(), os.path.join(tempfile.gettempdir(), "poster-tmdb.jpg"))[0]
             except:
                 self.log.error("Exception while retrieving poster %s.", str(err))
                 poster = None
         return poster
+    
+    # Sizes = [u'w92', u'w154', u'w185', u'w342', u'w500', u'w780', u'original']
+    def get_poster(self, img_size=4):
+        return self.tmdbConfig['images']['base_url'] + self.tmdbConfig['images']['poster_sizes'][img_size] + self.movieInfo["poster_path"]
 
+    def get_writers(self):
+        l = []
+        for r in self.casts['crew']:
+            if r['department'] == 'Writing':
+                l.append(r)
+        return l
+
+    def get_directors(self):
+        l = []
+        for r in self.casts['crew']:
+            if r['department'] == 'Directing':
+                l.append(r)
+        return l
+
+    def get_producers(self):
+        l = []
+        for r in self.casts['crew']:
+            if r['department'] == 'Production':
+                l.append(r)
+        return l
+
+    def get_cast(self):
+        return sorted(self.casts['cast'], key=lambda x: x['order'])
+
+    def get_mpaa_rating(self, country='US'):
+        for r in self.releases['countries']:
+            if country.lower() == r['iso_3166_1'].lower():
+                return r['certification']
 
 def main():
     if len(sys.argv) > 2:

@@ -83,6 +83,12 @@ Editing of Metadata
 --------------
 Using `meks-metadata = <metadata-options>` in autoProcess.ini ffmpeg can be called using -metadata to edit/change metadata during conversion.
 
+Change of TMDB API
+--------------
+This fork uses Celia Okley's [tmdbsimple](https://github.com/celiao/tmdbsimple), a completely different TMDB API which enables greater flexibility in searches (e.g. include year in search)
+This is a drop-in replacement on the extension side as all methods from tmdb_mp4.py are still the same. However if you accessed the original TMDB API then those things would need to be adapted.
+Due to this switch the whole GuessIt parsing features have improved too.
+
 Misc changes
 --------------
 - Access to autoSettings.ini is unified:
