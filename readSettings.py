@@ -15,7 +15,6 @@ from babelfish import Language
 class ReadSettings:
 
     def __init__(self, directory, filename, logger=None):
-
         # Setup logging
         if logger:
             log = logger
@@ -661,4 +660,4 @@ class ReadSettings:
 
 class settingsProvider:
     def __init__(self, logger=None):
-        self.defaultSettings = ReadSettings("/opt/share/sickbeard_mp4_automator", "autoProcess.ini", logger=logger)
+        self.defaultSettings = ReadSettings(os.path.dirname(__file__), "autoProcess.ini", logger=logger)
