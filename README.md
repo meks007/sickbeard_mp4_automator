@@ -9,7 +9,7 @@ A lot of what I think is useful FOR MY NEEDS is implemented. The following is an
 - If launched directly from Sickrage during PostProcess via postConversion.py things are not working as expcted just yet. This is mainly due to the Staging logic not properly implemented in postConversion.py just yet. 
 - DO NOT RUN postConversion.py. Rather schedule manual.py and use the Sickrage post_process plugin to trigger TORNADO processing via SR API (you only need to configure Sickrage in autoProcess.ini as usual, everything else happens on it's own)
 - If using the CouchPotato plugin things are not working as expected, rather use manual.py.
-- Generally speaking my ultimate usage pattern is to have manual.py on schedule, scavenge all new files, process them and make them available to Sickrage and CouchPotato via a 'release' folder (propagated during replication via move-to option) that these 2 can monitor. As soon as manual.py finishes converting a file a trigger should fire PostProcessing in Sickrage and CouchPotato using API calls. I'm no fan of having SR and CP trigger mp4 conversions themselves in an uncontrolled fashion.
+- Generally speaking my ultimate usage pattern is to have manual.py on schedule, scavenge all new files, process them and make them available to Sickrage and CouchPotato via a 'release' folder that these 2 can monitor. As soon as manual.py finishes converting a file a trigger should fire PostProcessing in Sickrage and CouchPotato using API calls. I'm no fan of having SR and CP trigger mp4 conversions themselves in an uncontrolled fashion.
 
 That being said here goes the changes so far:
 
@@ -38,10 +38,6 @@ There are 2 new options in autoProcess.ini available for specifying preset and q
 
 Note: If video-bitrate was specified then this turns into ffmpeg -maxrate. See https://trac.ffmpeg.org/wiki/Encode/H.264
 
-Editing of Metadata
---------------
-Using `meks-metadata = <metadata-options>` in autoProcess.ini ffmpeg can be called using -metadata to edit/change metadata during conversion.
-
 Recursive mass-processing
 --------------
 The manual processor (manual.py) has an option to specify an input folder rather than a file (nothing new).
@@ -62,11 +58,30 @@ Download/Videos
 Download/ISO - ['recode.skip']`
 - A hierarchy walk would then skip all files and subfolders in Apps/* and ISO/* and only allow processing of files directly in Download as well as Videos/*
 
+Copy-To and Move-To by file type
+--------------
+Suppose you use this converter for converting and tagging movies as well as TV shows. Further down the chain, after conversion is finished and the file is ready for post processing by SR/CP, it might be useful to separate the output files in folders for movies and TV shows. Originally this was not possible as you could either copy all files or move all files to one or multiple folders, but you would end up with all files in the same folder.
+You could (and still can) specify "multi-purpose" folders using `copy-to = /path/to/folder1|/path/to/folder2|/path/to/folderX`
+
+This was changed so that Copy-to now allows the following syntax for folders by *type*:
+`copy-to = movie:/path/to/moviefolder|tv:/path/to/tvfolder|/path/to/generic/folder`
+This would result in all files which were tagged as movies to be copied to /path/to/moviefolder and /path/to/generic/folder
+Consequently all TV shows would be copied to /path/to/tvfolder and /path/to/generic/folder
+If a movie or TV show could not be tagged, then all type-folders will be ignored and only the "multi-purpose" generic folders are taken into account. If no generics are defined then Copy-to would behave as if it wasn't set at all.
+
+Furthermore I saw no need in being able to specify Move-to. The Move-to option originally behaved the same as Copy-to but would delete (read: move away) the file from the original output location during replication, whereas Copy-to would only create copies and leave the file in the output original.
+So since both options are roughly the same, I made `move-to = True|False` instead of String. By specifying `move-to = True` all Copy-to operations transform into Move-to. So if you specified a type-folder for movies and enabled move-to then all your converted and tagged movie files would first be copied to the movie type folder and deleted after copy was successful.
+
 Post processing scripts extended:
 --------------
-- Fire CouchPotato Renamer using API
-- Fire Sickrage PostProcessor using API
+- Fire CouchPotato Renamer using API (only fire if file was tagged as movie)
+- Fire Sickrage PostProcessor using API (only fire if file was tagged as TV show)
 - Dump ffprobe data to log after conversion (for keeping a log of conversions)
+- All scripts were enabled to properly utilize logging facilities and no longer send to stdout but rather send output using loggers.
+
+Editing of Metadata
+--------------
+Using `meks-metadata = <metadata-options>` in autoProcess.ini ffmpeg can be called using -metadata to edit/change metadata during conversion.
 
 Misc changes
 --------------
@@ -75,11 +90,15 @@ Misc changes
 `settingsProvider().defaultSettings`
 This can be extended using multiple providers for multiple configurations (say: different configs for Movies and TV shows)
 eg: `settingsProvder().settingsMovies` or `settingsProvider().settingsTV`
+- Similarily, access to logging is unified, eg:
+`sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
+from _utils import LoggingAdapter
+log = LoggingAdapter.getLogger()
+anotherlog = LoggingAdapter.getLogger("testLogger")`
 - manual.py adapted to Python logging rather than print()
 - Media file validation unified to MkvtoMp4().validSource(), takes into account ffprobe information rather than just file extensions
 - If an input file was detected as bad then move it out of the way by renaming it to ".bad"
 - If `delete_original = False` then a rename operation automatically kicks in that appends ".recoded" to the input file. It's either delete or rename, leaving it untouched is no option.
-- `Move-to=True|False` is now boolean (default: False) and complements Copy-to. If Copy-to is not empty and Move-to is True then the copy logic turns into moves.
 
 Bugs/Caveats
 --------------
