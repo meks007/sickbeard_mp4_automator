@@ -229,7 +229,7 @@ class ReadSettings:
                         except:
                             log.exception("Error making directory %s" % cptop)
                             continue
-                    log.debug("%s path for type '%s' added: %s" % (cptol, cptok, cptop))
+                    #log.debug("%s path for type '%s' added: %s" % (cptol, cptok, cptop))
                     cptod[cptok].append(cptop)
         self.copyto = cptod  # Directories to copy the final file to
         self.moveto = config.getboolean(section, "move_to")  # Move instead of copy

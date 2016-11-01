@@ -16,11 +16,10 @@ log.info("Manual processor started - using interpreter %s" % sys.executable)
 from readSettings import settingsProvider
 from tvdb_mp4 import Tvdb_mp4
 from tmdb_mp4 import tmdb_mp4
-from mkvtomp4 import MkvtoMp4
-from post_processor import PostProcessor
 from tvdb_api import tvdb_api
 from tmdb_api import tmdb
 from extensions import tmdb_api_key
+from processor import fileProcessor
 
 if sys.version[0] == "3":
     raw_input = input
@@ -127,9 +126,7 @@ def guessInfo(fileName, tvdbid=None):
             return tvdbInfo(guess, tvdbid)
         else:
             return None
-    #except Exception as e:
     except:
-        #print(e)
         log.exception("Error while guessing")
         return None
 
@@ -171,62 +168,27 @@ def tvdbInfo(guessData, tvdbid=None):
         log.info("Matched TV episode")
     return 3, tvdbid, season, episode
 
-
 def processFile(inputfile, tagdata, relativePath=None):
+    tagmp4 = None
+    
     # Gather tagdata
     if tagdata is False:
         return  # This means the user has elected to skip the file
-    elif tagdata is None:
-        tagmp4 = None  # No tag data specified but convert the file anyway
     elif tagdata[0] is 1:
         imdbid = tagdata[1]
-        tagmp4 = tmdb_mp4(imdbid, language=settings.taglanguage)
-        try:
-            log.info("Processing movie - %s" % (tagmp4.title.encode(sys.stdout.encoding, errors='ignore')))
-        except:
-            log.info("Processing movie")
+        tagmp4 = tmdb_mp4(imdbid, language=settings.taglanguage, settings=settings)
     elif tagdata[0] is 2:
         tmdbid = tagdata[1]
-        tagmp4 = tmdb_mp4(tmdbid, True, language=settings.taglanguage)
-        try:
-            log.info("Processing movie - %s" % (tagmp4.title.encode(sys.stdout.encoding, errors='ignore')))
-        except:
-            log.info("Processing movie")
+        tagmp4 = tmdb_mp4(tmdbid, True, language=settings.taglanguage, settings=settings)
     elif tagdata[0] is 3:
         tvdbid = int(tagdata[1])
         season = int(tagdata[2])
         episode = int(tagdata[3])
-        tagmp4 = Tvdb_mp4(tvdbid, season, episode, language=settings.taglanguage)
-        try:
-            log.info("Processing TV show - %s S%02dE%02d - %s" % (tagmp4.show.encode(sys.stdout.encoding, errors='ignore'), int(tagmp4.season), int(tagmp4.episode), tagmp4.title.encode(sys.stdout.encoding, errors='ignore')))
-        except:
-            log.info("Processing TV episode")
+        tagmp4 = Tvdb_mp4(tvdbid, season, episode, language=settings.taglanguage, settings=settings)    
+    
+    # this does everything from here.
+    return processor.process(inputfile=inputfile, tagmp4=tagmp4, relativePath=relativePath)
 
-    # Process
-    if converter.validSource(inputfile) == True:
-        output = converter.process(inputfile, True)
-        if output:
-            if tagmp4 is not None:
-                try:
-                    tagmp4.setHD(output['x'], output['y'])
-                    tagmp4.writeTags(output['output'], settings.artwork, settings.thumbnail)
-                except:
-                    log.exception("There was an error tagging the file")
-            if settings.relocate_moov:
-                converter.QTFS(output['output'])
-            # don't just hand over the file, hand over the full thing.
-            output_files = converter.replicate(output, relativePath=relativePath)            
-            if settings.postprocess:
-                post_processor = PostProcessor(output_files)
-                if tagdata:
-                    if tagdata[0] is 1:
-                        post_processor.setMovie(tagdata[1])
-                    elif tagdata[0] is 2:
-                        post_processor.setMovie(tagdata[1])
-                    elif tagdata[0] is 3:
-                        post_processor.setTV(tagdata[1], tagdata[2], tagdata[3])
-                post_processor.run_scripts()
-        
 def walkDir(dir, silent=False, preserveRelative=False, tvdbid=None, tag=True):
     log.debug("Walking directory structure %s" % dir)
     ignore_folder = False
@@ -248,7 +210,7 @@ def walkDir(dir, silent=False, preserveRelative=False, tvdbid=None, tag=True):
         
         for file in f:
             filepath = os.path.join(r, file)
-            if converter.validSource(filepath) == True:
+            if processor.validSource(filepath) == True:
                 files.append(filepath)
                 log.debug("File added to queue: %s" % filepath)
     log.info("%s files ready for processing." % len(files))
@@ -276,8 +238,8 @@ def walkDir(dir, silent=False, preserveRelative=False, tvdbid=None, tag=True):
 
 def main():
     global settings
-    global converter
-
+    global processor
+    
     parser = argparse.ArgumentParser(description="Manual conversion and tagging script for sickbeard_mp4_automator")
     parser.add_argument('-i', '--input', help='The source that will be converted. May be a file or a directory')
     parser.add_argument('-c', '--config', help='Specify an alternate configuration file location')
@@ -347,7 +309,7 @@ def main():
     else:
         path = getValue("Enter path to file")
 
-    converter = MkvtoMp4(settings)
+    processor = fileProcessor(settings)
 
     if os.path.isdir(path):
         tvdbid = int(args['tvdbid']) if args['tvdbid'] else None

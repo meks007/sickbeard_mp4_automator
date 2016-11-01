@@ -21,11 +21,16 @@ from mkvtomp4 import MkvtoMp4
 from readSettings import settingsProvider
 
 class Tvdb_mp4:
-    def __init__(self, show, season, episode, original=None, language='en', logger=None):
+    def __init__(self, show, season, episode, original=None, language='en', logger=None, settings=None):
         if logger:
             self.log = logger
         else:
             self.log = LoggingAdapter.getLogger(__name__)
+
+        if settings is not None:
+            self.settings = settings
+        else:
+            self.settings = settingsProvider().defaultSettings
 
         for i in range(3):
             try:
@@ -65,7 +70,7 @@ class Tvdb_mp4:
 
     def writeTags(self, mp4Path, artwork=True, thumbnail=False):
         self.log.info("Tagging file %s" % mp4Path)
-        if MkvtoMp4(settingsProvider().defaultSettings).validSource(mp4Path) == True:
+        if MkvtoMp4(self.settings).validSource(mp4Path) == True:
             video = MP4(mp4Path)
             try:
                 video.delete()

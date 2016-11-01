@@ -578,7 +578,7 @@ class MkvtoMp4:
             self.log.debug("  Output file: %s." % outputfile)
         
         if os.path.abspath(inputfile) == os.path.abspath(outputfile):
-            self.log.debug("Inputfile and outputfile are the same.")
+            self.log.debug("Input and output files are the same.")
             try:
                 os.rename(inputfile, inputfile + ".original")
                 inputfile = inputfile + ".original"
@@ -588,7 +588,7 @@ class MkvtoMp4:
                 while os.path.isfile(outputfile):
                     outputfile = os.path.join(output_dir, filename + "(" + str(i) + ")." + self.settings.output_extension)
                     i += i
-                self.log.debug("Unable to rename inputfile. Setting output file name to %s." % outputfile)
+                self.log.debug("Unable to rename input file. Setting output file name to %s." % outputfile)
     
         if self.needProcessing(inputfile):
             conv = self.converter.convert(inputfile, outputfile, options, timeout=None, preopts=options['preopts'], postopts=options['postopts'])
@@ -712,6 +712,7 @@ class MkvtoMp4:
         for cptype in cptypes:
             cpto.extend(self.settings.copyto[cptype] if cptype in self.settings.copyto else [])
             self.log.debug("Appended Copy-to destinations for %s" % cptype)
+        cpto = set(cpto)
         self.log.debug("Copy-to destinations for types %s: %s" % (", ".join(cptypes), ", ".join(cpto)))
         return cpto
     
@@ -742,7 +743,7 @@ class MkvtoMp4:
                     if not os.path.exists(cpdest):
                         os.makedirs(cpdest)
                 copytofile = os.path.join(cpdest, os.path.split(inputfile)[1])
-                if not inputfile == copytofile:
+                if not inputfile == copytofile and not copytofile in files:
                     try:
                         self.removeFile(copytofile, 2, 10, inputfile, True)
                         files.append(copytofile)
