@@ -89,6 +89,14 @@ This fork uses Celia Okley's [tmdbsimple](https://github.com/celiao/tmdbsimple),
 This is a drop-in replacement on the extension side as all methods from tmdb_mp4.py are still the same. However if you accessed the original TMDB API then those things would need to be adapted.
 Due to this switch the whole GuessIt parsing features have improved too.
 
+Advanced file tagging
+--------------
+- .nfo support added via `meks-nfosearch = True|False`. Enable to include a nfo file if it exists, search for an IMDB link in it and use that for tagging.
+- nfo files will always be searched in the same path as the inputfile. Paths can be extended using `meks-nfopaths = path|path` (eg `..` for parent dir)
+- Only e first nfo file with a valid IMDB link will be used for tagging. Only the first IMDB link in that file will be used. Any subsequent nfo files or multiple links within the same file are disregarded.
+- Options for `-imdb` and `-tmdb` as well as any IMDB and/or TMDB related tagging attempts can be fully applied to either TMDB or TVDB data, depending on the class that is being returned from TMDB. So for example if you specified a TV show via `-tmdb 47110815` then that lookup would yield a "series" answer from TMDB and that request would be proxied to a TVDB title search. The same is valid for: TV show via -imdb, Movie via -imdb.
+- Tagging order is: manual.py arguments > nfo > GuessIt > no tag
+
 Misc changes
 --------------
 - Access to autoSettings.ini is unified:

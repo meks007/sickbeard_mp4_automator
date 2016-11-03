@@ -64,6 +64,12 @@ class Tvdb_mp4:
                 # Generate XML tags for Actors/Writers/Directors
                 self.xml = self.xmlTags()
                 break
+            except HTTPError as e:
+                if e.code == 404:
+                    self.log.exception("Invalid TMDB data received for request.")
+                else:
+                    self.log.exception("Error occured during movie data scraping.")
+                    raise(e)
             except Exception as e:
                 self.log.exception("Failed to connect to TVDB, trying again in 20 seconds.")
                 time.sleep(20)

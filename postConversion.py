@@ -7,7 +7,7 @@ import struct
 
 from _utils import LoggingAdapter
 log = LoggingAdapter.getLogger("MANUAL", {})
-log.info("Sickbeard extra script post processing started.")
+log.info("Sickbeard extra script post processing started")
 
 from readSettings import ReadSettings
 from autoprocess import plex
@@ -26,10 +26,10 @@ if len(sys.argv) > 4:
     season = int(sys.argv[4])
     episode = int(sys.argv[5])
 
-    log.debug("Input file: %s." % inputfile)
-    log.debug("Original name: %s." % original)
-    log.debug("TvDB ID: %s." % tvdb_id)
-    log.debug("Season: %s Episode: %s." % (season, episode))
+    log.debug("Input file: %s" % inputfile)
+    log.debug("Original name: %s" % original)
+    log.debug("TvDB ID: %s" % tvdb_id)
+    log.debug("Season: %s Episode: %s" % (season, episode))
 
     log.info("Processing %s" % inputfile)
 
@@ -41,7 +41,7 @@ if len(sys.argv) > 4:
         #if output:
         #    # Tag with metadata
         #    if settings.tagfile:
-        #        log.info("Tagging %s with ID %s Season %s Episode %s." % (inputfile, tvdb_id, season, episode))
+        #        log.info("Tagging %s with ID %s Season %s Episode %s" % (inputfile, tvdb_id, season, episode))
         #        tagmp4 = Tvdb_mp4(tvdb_id, season, episode, original, language=settings.taglanguage)
         #        tagmp4.setHD(output['x'], output['y'])
         #        tagmp4.writeTags(output['output'], settings.artwork, settings.thumbnail)
@@ -64,10 +64,10 @@ if len(sys.argv) > 4:
         #        for item in refresh:
         #            log.debug(refresh[item])
         #    except (IOError, ValueError):
-        #        log.exception("Couldn't refresh Sickbeard, check your autoProcess.ini settings.")
+        #        log.exception("Couldn't refresh Sickbeard, check your autoProcess.ini settings")
         #
         #    plex.refreshPlex(settings, 'show', log)
 
 else:
-    log.error("Not enough command line arguments present %s." % len(sys.argv))
+    log.error("Not enough command line arguments present %s" % len(sys.argv))
     sys.exit()

@@ -90,6 +90,8 @@ class ReadSettings:
                         'meks-staging': 'True',
                         'meks-staging-extension': 'part',
                         'meks-metadata': '',
+                        'meks-nfosearch': 'True',
+                        'meks-nfopaths': '.|..',
                         'fullpathguess': 'True',
                         'tagfile': 'True',
                         'tag-language': 'en',
@@ -172,7 +174,7 @@ class ReadSettings:
         if os.path.isfile(configFile):
             config.read(configFile)
         else:
-            log.error("Config file not found, creating %s." % configFile)
+            log.error("Config file not found, creating %s" % configFile)
             # config.filename = filename
             write = True
 
@@ -244,7 +246,7 @@ class ReadSettings:
             try:
                 import qtfaststart
             except:
-                log.error("Please install QTFastStart via PIP, relocate_moov will be disabled without this module.")
+                log.error("Please install QTFastStart via PIP, relocate_moov will be disabled without this module")
                 self.relocate_moov = False
         self.acodec = config.get(section, "audio-codec").lower()  # Gets the desired audio codec, if no valid codec selected, default to AC3
         if self.acodec == '':
@@ -257,9 +259,9 @@ class ReadSettings:
             self.abitrate = int(self.abitrate)
         except:
             self.abitrate = 256
-            log.warning("Audio bitrate was invalid, defaulting to 256 per channel.")
+            log.warning("Audio bitrate was invalid, defaulting to 256 per channel")
         if self.abitrate > 256:
-            log.warning("Audio bitrate >256 may create errors with common codecs.")
+            log.warning("Audio bitrate >256 may create errors with common codecs")
 
         self.afilter = config.get(section, "audio-filter").lower().strip()  # Audio filter
         if self.afilter == '':
@@ -286,11 +288,11 @@ class ReadSettings:
                 import subliminal
             except Exception as e:
                 self.downloadsubs = False
-                log.exception("Subliminal is not installed, automatically downloading of subs has been disabled.")
+                log.exception("Subliminal is not installed, automatically downloading of subs has been disabled")
         self.subproviders = config.get(section, 'sub-providers').lower()
         if self.subproviders == '':
             self.downloadsubs = False
-            log.warning("You must specifiy at least one subtitle provider to download subs automatically, subtitle downloading disabled.")
+            log.warning("You must specifiy at least one subtitle provider to download subs automatically, subtitle downloading disabled")
         else:
             self.subproviders = self.subproviders.lower().replace(' ', '').split(',')
 
@@ -300,7 +302,7 @@ class ReadSettings:
         try:
             self.permissions = int(self.permissions, 8)
         except:
-            self.log.exception("Invalid permissions, defaulting to 777.")
+            self.log.exception("Invalid permissions, defaulting to 777")
             self.permissions = int("0777", 8)
 
         try:
@@ -316,10 +318,10 @@ class ReadSettings:
             try:
                 self.maxchannels = int(self.maxchannels)
             except:
-                log.exception("Invalid number of audio channels specified.")
+                log.exception("Invalid number of audio channels specified")
                 self.maxchannels = None
         if self.maxchannels is not None and self.maxchannels < 1:
-            log.warning("Must have at least 1 audio channel.")
+            log.warning("Must have at least 1 audio channel")
             self.maxchannels = None
 
         self.vcodec = config.get(section, "video-codec")
@@ -336,9 +338,9 @@ class ReadSettings:
                 self.vbitrate = int(self.vbitrate)
                 if not (self.vbitrate > 0):
                     self.vbitrate = None
-                    log.warning("Video bitrate must be greater than 0, defaulting to no video bitrate cap.")
+                    log.warning("Video bitrate must be greater than 0, defaulting to no video bitrate cap")
             except:
-                log.exception("Invalid video bitrate, defaulting to no video bitrate cap.")
+                log.exception("Invalid video bitrate, defaulting to no video bitrate cap")
                 self.vbitrate = None
 
         try:
@@ -362,6 +364,8 @@ class ReadSettings:
             self.meks_walk_ignore = None
         else:
             self.meks_walk_ignore = self.meks_walk_ignore.split(',')
+        self.meks_nfosearch = config.getboolean(section, "meks-nfosearch")
+        self.meks_nfopaths = config.get(section, 'meks-nfopaths').split('|')
         
         self.vwidth = config.get(section, "video-max-width")
         if self.vwidth == '':
@@ -370,7 +374,7 @@ class ReadSettings:
             try:
                 self.vwidth = int(self.vwidth)
             except:
-                log.exception("Invalid video width, defaulting to none.")
+                log.exception("Invalid video width, defaulting to none")
                 self.vwidth = None
 
         self.h264_level = config.get(section, "h264-max-level")
@@ -380,7 +384,7 @@ class ReadSettings:
             try:
                 self.h264_level = float(self.h264_level)
             except:
-                log.exception("Invalid h264 level, defaulting to none.")
+                log.exception("Invalid h264 level, defaulting to none")
                 self.h264_level = None
 
         self.qsv_decoder = config.getboolean(section, "use-qsv-decoder-with-encoder")  # Use Intel QuickSync Decoder when using QuickSync Encoder
@@ -402,25 +406,25 @@ class ReadSettings:
                 self.scodec = ['mov_text']
             else:
                 self.scodec = ['srt']
-            log.warning("Invalid subtitle codec, defaulting to '%s'." % self.scodec)
+            log.warning("Invalid subtitle codec, defaulting to '%s'" % self.scodec)
         else:
             self.scodec = self.scodec.replace(' ', '').split(',')
 
         if self.embedsubs:
             if len(self.scodec) > 1:
-                log.warning("Can only embed one subtitle type, defaulting to 'mov_text'.")
+                log.warning("Can only embed one subtitle type, defaulting to 'mov_text'")
                 self.scodec = ['mov_text']
             if self.scodec[0] not in valid_internal_subcodecs:
-                log.warning("Invalid interal subtitle codec %s, defaulting to 'mov_text'." % self.scodec[0])
+                log.warning("Invalid interal subtitle codec %s, defaulting to 'mov_text'" % self.scodec[0])
                 self.scodec = ['mov_text']
         else:
             for codec in self.scodec:
                 if codec not in valid_external_subcodecs:
-                    log.warning("Invalid external subtitle codec %s, ignoring." % codec)
+                    log.warning("Invalid external subtitle codec %s, ignoring" % codec)
                     self.scodec.remove(codec)
 
             if len(self.scodec) == 0:
-                log.warning("No valid subtitle formats found, defaulting to 'srt'.")
+                log.warning("No valid subtitle formats found, defaulting to 'srt'")
                 self.scodec = ['srt']
 
         self.swl = config.get(section, 'subtitle-language').strip().lower()  # List of acceptable languages for subtitle streams to be carried over from the original file, separated by a comma. Blank for all
@@ -442,7 +446,7 @@ class ReadSettings:
             self.sdl = None
         # Prevent incompatible combination of settings
         if self.output_dir == "" and self.delete is False:
-            log.error("You must specify an alternate output directory if you aren't going to delete the original file.")
+            log.error("You must specify an alternate output directory if you aren't going to delete the original file")
             sys.exit()
         # Create output directory if it does not exist
         if self.output_dir is not None:
@@ -457,10 +461,10 @@ class ReadSettings:
                 babel = Language(self.taglanguage)
                 self.taglanguage = babel.alpha2
             except:
-                log.exception("Unable to set tag language, defaulting to English.")
+                log.exception("Unable to set tag language, defaulting to English")
                 self.taglanguage = 'en'
         elif len(self.taglanguage) < 2:
-            log.exception("Unable to set tag language, defaulting to English.")
+            log.exception("Unable to set tag language, defaulting to English")
             self.taglanguage = 'en'
         self.artwork = config.get(section, "download-artwork").lower()  # Download and embed artwork
         if self.artwork == "poster":
@@ -475,7 +479,7 @@ class ReadSettings:
                 self.artwork = config.getboolean(section, "download-artwork")
             except:
                 self.artwork = True
-                self.log.error("Invalid download-artwork value, defaulting to 'poster'.")
+                self.log.error("Invalid download-artwork value, defaulting to 'poster'")
 
         # Read relevant CouchPotato section information
         section = "CouchPotato"

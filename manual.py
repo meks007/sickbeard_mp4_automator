@@ -2,12 +2,12 @@
 
 import sys
 import os
-import guessit
 import locale
 import glob
 import argparse
 import struct
-from pprint import pformat
+import guessit
+import re
 
 import logging
 from _utils import LoggingAdapter
@@ -15,12 +15,10 @@ log = LoggingAdapter.getLogger("MANUAL", {})
 log.info("Manual processor started - using interpreter %s" % sys.executable)
 
 from readSettings import settingsProvider
-from tvdb_mp4 import Tvdb_mp4
-from tmdb_mp4 import tmdb_mp4
-from tvdb_api import tvdb_api
-import tmdb_api as tmdb
-from extensions import tmdb_api_key
 from processor import fileProcessor
+from tmdb_mp4 import tmdb_mp4, tmdbSearch
+from tvdb_mp4 import Tvdb_mp4
+from tvdb_api import tvdb_api
 
 if sys.version[0] == "3":
     raw_input = input
@@ -45,7 +43,6 @@ def mediatype():
     else:
         print("Invalid selection")
         return mediatype()
-
 
 def getValue(prompt, num=False):
     print(prompt + ":")
@@ -76,15 +73,134 @@ def getYesNo():
         print("Invalid selection")
         return getYesNo()
 
+def tvdbInfo(guessData, tvdbid=None):
+    series = guessData["title"]
+    if 'year' in guessData:
+        fullseries = series + " (" + str(guessData["year"]) + ")"
+    season = guessData["season"]
+    episode = guessData["episodeNumber"]
+    t = tvdb_api.Tvdb(interactive=False, cache=False, banners=False, actors=False, forceConnect=True, language='en')
+    try:
+        try:
+            tvdbid = str(tvdbid) if tvdbid else t[fullseries]['id']
+            series = t[int(tvdbid)]['seriesname']
+        except:
+            tvdbid = t[series]['id']
+        try:
+            log.info("Matched TV episode as %s (TVDB ID:%d) S%02dE%02d" % (series.encode(sys.stdout.encoding, errors='ignore'), int(tvdbid), int(season), int(episode)))
+        except:
+            log.info("Matched TV episode")
+        return 3, tvdbid, season, episode
+    except:
+        log.error("Unable to match against TVDB.")
+        return False
 
-def getinfo(fileName=None, silent=False, tag=True, tvdbid=None):
-    log.debug("Trying to fetch metadata information for file ...")
+def g_guessNfo(inputfile):
+    if settings.meks_nfosearch:
+        log.debug("Tagging: Nfo")
+        fpath = os.path.split(inputfile)[0]
+        paths = [fpath]
+        for path in settings.meks_nfopaths:
+            paths.append(os.path.join(fpath, path))
+        for path in paths:
+            log.debug("Searching for a nfo file in %s" % path)
+            for file in os.listdir(path):
+                if file.endswith(".nfo"):
+                    fullfile = os.path.join(path, file)
+                    log.debug("Found nfo file %s" % fullfile)
+                    with open(fullfile, 'r') as urls_in:
+                        for line in urls_in:
+                            links = re.findall(r"(http\:\/\/www\.imdb\.com/(?:title/)?(tt\d+))", line)
+                            if links:
+                                log.debug("Extracted IMDB ID %s from %s" % (links[0][1], file))
+                                return links[0][1]
+        log.debug("No nfo files found")
+    return None
+
+def g_guessIt(fileName):
+    guess = {}
+    guess['titles'] = []
+    log.debug("Tagging: GuessIt")
+    guessData = guessit.guess_file_info(fileName)
+    for key in ['title', 'type', 'season', 'episodeNumber', 'year']:
+        if key in guessData:
+            guess[key] = guessData[key]
+    if 'series' in guessData:
+        guess['title'] = guessData['series']
+    if 'title' in guess:
+        log.debug("Trying to calculate alternative GuessIt titles")
+        # init list and add default title as element
+        guess['titles'].append([guess['title'], guess['year'] if 'year' in guess else None])
+        
+        parts = guess['title'].split(' ')
+        # search for year in title if guessit didn't find it.
+        for part in parts:
+            if part.isdecimal():
+                log.debug("A decimal was found in title = %s" % part)
+                if len(part) == 4:
+                    log.debug("This could be a year, splitting year from title and adding alternative title")
+                    parts.remove(part)
+                    finaltitle = ' '.join(parts)
+                    guess['titles'].append([finaltitle, part])
+                    log.debug("Alternative title will be %s from year %s" % (finaltitle, part))
+                    break
+    return guess
+
+def guessInfo(fileName, tagdata=None):
+    if not settings.fullpathguess:
+        fileName = os.path.basename(fileName)
     
-    tagdata = None
+    imdbid = None
+    info = None
     
+    provid = None
+    providsearch = 1
+    
+    ### Arguments ###
+    if tagdata is not None:
+        log.debug("Provided Tag data: %s" % tagdata)
+        provid = tagdata[1]
+        providsearch = tagdata[0]
+        log.debug("ID of type %s from Tag data: %s" % (providsearch, provid))
+    
+    ### NFO ###
+    providGuess = g_guessNfo(fileName)
+    log.debug("ID of type 1 from Nfo guess: %s" % providGuess)
+    provid = providGuess if provid is None else provid
+    
+    ### GuessIt ###
+    guess = g_GuessIt(fileName=fileName)
+
+    if provid is not None:
+        log.debug("Final ID of type %s from all sources: %s" % (providsearch, provid))
+        if providsearch == 1:
+           guess['what'] = {'term':provid, 'external_source':'imdb_id'}
+           guess['type'] = 'find'    
+           guess = searcher.find(guess)
+        elif providsearch == 2:
+           guess = searcher.load(provid, guess)
+           
+    log.debug("Guessed data: %s" % guess)
+    
+    if guess is not None:
+        if guess['type'] == 'movie':
+            log.debug("Guessed movie = %s" % guess['title'])
+            log.debug("Determined the following possible movie queries:")
+            log.debug(guess['titles'])
+            info = searcher.info(guess)
+        elif guess['type'] == 'episode':
+            log.debug("Guessed TV show = %s S%2dE%2d" % (guess['title'], guess['season'], guess['episodeNumber']))
+            info = tvdbInfo(guess)
+    
+    if info is None:
+        log.debug("Unable to guess data. Type or ID invalid?")
+    
+    return info
+
+def getinfo(fileName=None, silent=False, tagdata=None):
     # Try to guess the file if guessing is enabled
     if fileName is not None:
-        tagdata = guessInfo(fileName, tvdbid)
+        tagdata = guessInfo(fileName, tagdata)
         
     if silent is False:
         if tagdata:
@@ -95,117 +211,25 @@ def getinfo(fileName=None, silent=False, tag=True, tvdbid=None):
             log.info("Unable to determine identity based on filename, must enter manually")
         m_type = mediatype()
         if m_type is 3:
-            tvdbid = getValue("Enter TVDB Series ID", True)
+            provid = getValue("Enter TVDB Series ID", True)
             season = getValue("Enter Season Number", True)
             episode = getValue("Enter Episode Number", True)
-            return m_type, tvdbid, season, episode
+            return m_type, provid, season, episode
         elif m_type is 1:
-            imdbid = getValue("Enter IMDB ID")
-            return m_type, imdbid
+            provid = getValue("Enter IMDB ID")
+            return m_type, provid
         elif m_type is 2:
-            tmdbid = getValue("Enter TMDB ID", True)
-            return m_type, tmdbid
+            provid = getValue("Enter TMDB ID", True)
+            return m_type, provid
         elif m_type is 4:
             return None
         elif m_type is 5:
             return False
     else:
-        if tagdata and tag:
+        if tagdata and settings.tagfile:
             return tagdata
         else:
             return None
-
-def guessPrepare(guessData):
-    if 'title' in guessData:
-        log.debug("Trying to calculate alternative GuessIt titles.")
-        # init list and add default title as element
-        guessData['titles'] = []
-        guessData['titles'].append([guessData['title'], None])
-        
-        parts = guessData['title'].split(' ')
-        # search for year in title if guessit didn't find it.
-        for part in parts:
-            if part.isdecimal():
-                log.debug("A decimal was found in title = %s" % part)
-                if len(part) == 4:
-                    log.debug("This could be a year, splitting year from title and adding alternative title.")
-                    parts.remove(part)
-                    finaltitle = ' '.join(parts)
-                    guessData['titles'].append([finaltitle, part])
-                    log.debug("Alternative title will be %s from year %s" % (finaltitle, part))
-                    break
-            else:
-                log.debug("string in title found = %s" % part)
-    
-    return guessData
-
-def guessInfo(fileName, tvdbid=None):
-    log.debug("Trying to find data via GuessIt.")
-    if not settings.fullpathguess:
-        fileName = os.path.basename(fileName)
-    guess = guessit.guess_file_info(fileName)
-    try:
-        if guess['type'] == 'movie':
-            log.debug("GuessIt returned movie = %s" % guess['title'])
-            guess = guessPrepare(guess)
-            log.debug("GuessIt returned the following possible movie queries:")
-            log.debug(pformat(guess['titles']))
-            return tmdbInfo(guess)
-        elif guess['type'] == 'episode':
-            log.debug("GuessIt returned TV show = %s S%2dE%2d" % (guess['title'], guess['season'], guess['episode']))
-            return tvdbInfo(guess, tvdbid)
-        else:
-            log.debug("GuessIt was unable to guess data.")
-            return None
-    except:
-        log.exception("Error while guessing")
-        return None
-
-def tmdbSearch(title, year, language):
-    log.info("Fetching data for %s from TMDB." % title)
-    tmdb.API_KEY = tmdb_api_key
-    search = tmdb.Search()
-    response = search.movie(query=title, year=year, language=language)
-    return search.results
-
-def tmdbInfo(guessData):
-    for guess in reversed(guessData['titles']):
-    # iterate reversed because year-based entries are at the bottom of the list, but yield better results.
-        title = guess[0]
-        year = guess[1]
-
-        movies = tmdbSearch(title, year, settings.taglanguage)
-        for movie in movies: 
-            # Identify the first movie in the collection that matches exactly the movie title
-            foundname = ''.join(e for e in movie["title"] if e.isalnum())
-            origname = ''.join(e for e in title if e.isalnum())
-            
-            if foundname.lower() == origname.lower():
-                tmdbid = movie["id"]
-                log.info("Matched movie title:")
-                log.info("  Title: %s" % movie["title"].encode(sys.stdout.encoding, errors='ignore'))
-                log.info("  Release date: %s" % movie["release_date"])
-                log.info("  TMDB ID: %s" % tmdbid)
-                return 2, tmdbid
-    return None
-
-def tvdbInfo(guessData, tvdbid=None):
-    series = guessData["series"]
-    if 'year' in guessData:
-        fullseries = series + " (" + str(guessData["year"]) + ")"
-    season = guessData["season"]
-    episode = guessData["episodeNumber"]
-    t = tvdb_api.Tvdb(interactive=False, cache=False, banners=False, actors=False, forceConnect=True, language='en')
-    try:
-        tvdbid = str(tvdbid) if tvdbid else t[fullseries]['id']
-        series = t[int(tvdbid)]['seriesname']
-    except:
-        tvdbid = t[series]['id']
-    try:
-        log.info("Matched TV episode as %s (TVDB ID:%d) S%02dE%02d" % (series.encode(sys.stdout.encoding, errors='ignore'), int(tvdbid), int(season), int(episode)))
-    except:
-        log.info("Matched TV episode")
-    return 3, tvdbid, season, episode
 
 def getTagData(filename, args=None):
     if args is None:
@@ -216,64 +240,72 @@ def getTagData(filename, args=None):
     provid = None
     
     if settings.tagfile:
-        log.debug("Tagging is enabled.")
+        log.info(">>> Tagging file ...")
         
         # Gather tagdata
         if args is not None:
+            log.debug("Tagging: Args")
             if (args['tvdbid'] and not (args['imdbid'] or args['tmdbid'])):
                 provid = int(args['tvdbid']) if args['tvdbid'] else None
                 season = int(args['season']) if args['season'] else None
                 episode = int(args['episode']) if args['episode'] else None
                 if (provid and season and episode):
-                    log.debug("TvDB show data found in arguments.")
+                    log.debug("TvDB show data found in arguments")
                     tagdata = [3, provid, season, episode]
             elif ((args['imdbid'] or args['tmdbid']) and not args['tvdbid']):
                 if (args['imdbid']):
-                    log.debug("IMDB movie data found in arguments.")
+                    log.debug("IMDB movie data found in arguments")
                     provid = args['imdbid']
-                    tagdata = [1, imdbid]
+                    tagdata = [1, provid]
                 elif (args['tmdbid']):
-                    log.debug("TMDB movie data found in arguments.")
+                    log.debug("TMDB movie data found in arguments")
                     provid = int(args['tmdbid'])
-                    tagdata = [2, tmdbid]
-        if args is None or tagdata is None:
-            log.debug("No or incorrect tagging arguments were passed, analyzing file.")
-            tagdata = getinfo(filename, silent=args['auto'], tvdbid=provid)
+                    tagdata = [2, provid]
+        #if args is None or tagdata is None:
+        tagdata = getinfo(filename, silent=args['auto'], tagdata=tagdata)
             # False if user skipped tagging
         
         if tagdata is not False:
             # Evaluate appropriate MP4 handler
-            if tagdata[0] is 1:
-                log.debug("IMDB movie data is valid.")
-                imdbid = tagdata[1]
-                tagmp4 = tmdb_mp4(imdbid, language=settings.taglanguage, settings=settings)
-            elif tagdata[0] is 2:
-                log.debug("TMDB movie data is valid.")
-                tmdbid = tagdata[1]
-                tagmp4 = tmdb_mp4(tmdbid, True, language=settings.taglanguage, settings=settings)
-            elif tagdata[0] is 3:
-                log.debug("TvDB show data is valid.")
-                tvdbid = int(tagdata[1])
-                season = int(tagdata[2])
-                episode = int(tagdata[3])
-                tagmp4 = Tvdb_mp4(tvdbid, season, episode, language=settings.taglanguage, settings=settings)    
-            else:
-                log.warning("Unknown metadata tagging group found, ignoring.")
-        else:
-            log.debug("Skiping file.")
+            try:
+                if tagdata[0] is 1:
+                    imdbid = tagdata[1]
+                    tagmp4 = tmdb_mp4(imdbid, settings=settings)
+                elif tagdata[0] is 2:
+                    tmdbid = tagdata[1]
+                    tagmp4 = tmdb_mp4(tmdbid, True, settings=settings)
+                elif tagdata[0] is 3:
+                    tvdbid = int(tagdata[1])
+                    season = int(tagdata[2])
+                    episode = int(tagdata[3])
+                    tagmp4 = Tvdb_mp4(tvdbid, season, episode, settings=settings)
+            except Exception as e:
+                log.exception(e)
+                tagmp4 = None
+            
+            if tagmp4 is None:
+                log.warning("Unknown metadata received, file will not be tagged")
     else:
-        log.debug("Tagging is disabled.")
+        log.debug("Tagging is disabled")
     
     return [tagdata, tagmp4]
 
 def processFile(inputfile, relativePath=None):
-    log.info("Attempting to process file %s" % inputfile)
+    log.info("Found file - %s" % inputfile)
     
+    #try:
     tagdata, tagmp4 = getTagData(inputfile)
+    #except:
+    #    log.error("Something happened during tagging. This file will not be tagged")
+    #    log.error("Re-run in non-conversion mode to tag this file once the error was resolved")
+    #    tagdata = True
+    #    tagmp4 = None
+        
     if tagdata is not False:
         # this does everything from here.
         return processor.process(inputfile=inputfile, tagmp4=tagmp4, relativePath=relativePath)
     else:
+        log.info("File skipped")
         return False
 
 def walkDir(dir, preserveRelative=False):
@@ -281,7 +313,7 @@ def walkDir(dir, preserveRelative=False):
     ignore_folder = False
     files = []
     
-    log.info("Building list of files to process ...")
+    log.info(">>> Building list of files to process ...")
     for r, d, f in os.walk(dir):
         f = [fl for fl in f if not fl[0] == '.']
         d[:] = [dr for dr in d if not dr[0] == '.']
@@ -291,7 +323,7 @@ def walkDir(dir, preserveRelative=False):
         ignore_folder = False
         
         if any(x in settings.meks_walk_ignore for x in f):
-            log.debug("Folder %s contains ignore file, stepping over folder." % r)
+            log.debug("Folder %s contains ignore file, stepping over folder" % r)
             ignore_folder = r
             continue
         
@@ -301,19 +333,20 @@ def walkDir(dir, preserveRelative=False):
                 files.append(filepath)
                 log.debug("File added to queue: %s" % filepath)
     
-    log.info("%s files ready for processing." % len(files))
+    log.info("%s files ready for processing" % len(files))
     for filepath in files:
         if os.path.isfile(filepath):
             try:
                 relative = os.path.split(os.path.relpath(filepath, dir))[0] if preserveRelative else None
                 processFile(filepath, relativePath=relative)
             except:
-                log.exception("An unexpected error occurred, processing of this file was not attempted.")
+                log.exception("An unexpected error occurred, processing of this file was not attempted")
 
 def main():
     global settings
     global processor
     global parser
+    global searcher
     
     parser.add_argument('-i', '--input', help='The source that will be converted. May be a file or a directory')
     parser.add_argument('-c', '--config', help='Specify an alternate configuration file location')
@@ -336,9 +369,8 @@ def main():
 
     # Setup the silent mode
     silent = args['auto']
-    tag = True
 
-    log.debug("%sbit Python." % (struct.calcsize("P") * 8))
+    log.debug("%sbit Python" % (struct.calcsize("P") * 8))
 
     # Settings overrides
     settings = None
@@ -387,8 +419,9 @@ def main():
     else:
         path = getValue("Enter path to file")
 
-    processor = fileProcessor(settings)
-
+    processor = fileProcessor(settings=settings)
+    searcher = tmdbSearch(settings=settings)
+    
     if os.path.isdir(path):
         walkDir(path, preserveRelative=args['preserveRelative'])
     elif os.path.isfile(path):
@@ -400,6 +433,7 @@ def main():
             log.error("File is not in the correct format - %s" % (path))
         except:
             log.error("File is not in the correct format")
+    log.info("All done!")
     
 if __name__ == '__main__':
     main()
