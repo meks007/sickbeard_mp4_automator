@@ -169,7 +169,7 @@ def guessInfo(fileName, tagdata=None):
     provid = providGuess if provid is None else provid
     
     ### GuessIt ###
-    guess = g_GuessIt(fileName=fileName)
+    guess = g_guessIt(fileName=fileName)
 
     if provid is not None:
         log.debug("Final ID of type %s from all sources: %s" % (providsearch, provid))

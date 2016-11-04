@@ -139,7 +139,7 @@ class MkvtoMp4:
                     self.log.debug("Video file is valid")
                     return True
                 else:
-                    self.log.debug("Video file probed negative - assuming bad")
+                    self.log.error("Video file probed negative - assuming bad")
                     return -1
             else:
                 self.log.debug("Video file was not found")
@@ -203,7 +203,7 @@ class MkvtoMp4:
         except:
             vbr = info.format.bitrate / 1000
 
-        if info.video.codec.lower() in self.settings.vcodec:
+        if info.video.codec.lower() in self.settings.vcodec and not self.needProcessing(inputfile):
             vcodec = 'copy'
         else:
             vcodec = self.settings.vcodec[0]
