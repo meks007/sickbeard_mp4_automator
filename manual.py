@@ -10,7 +10,7 @@ import guessit
 import re
 
 import logging
-from _utils import LoggingAdapter
+from _utils import LoggingAdapter, executionLocker
 log = LoggingAdapter.getLogger("MANUAL", {})
 log.info("Manual processor started - using interpreter %s" % sys.executable)
 
@@ -291,6 +291,8 @@ def getTagData(filename, args=None):
     return [tagdata, tagmp4]
 
 def processFile(inputfile, relativePath=None):
+    execlock.renew()
+    
     log.info("Found file - %s" % inputfile)
     
     #try:
@@ -347,6 +349,15 @@ def main():
     global processor
     global parser
     global searcher
+    global execlock
+    
+    execlock = executionLocker()
+    if not execlock.islocked():
+        execlock.lock()
+    else:
+        log.error("Unable to acquire exclusive lock.")
+        log.error("Wait until the previous run is finished or a deadlock expires. Remove run.lock to release the lock immediately.")
+        sys.exit(0)
     
     parser.add_argument('-i', '--input', help='The source that will be converted. May be a file or a directory')
     parser.add_argument('-c', '--config', help='Specify an alternate configuration file location')
@@ -434,6 +445,8 @@ def main():
         except:
             log.error("File is not in the correct format")
     log.info("All done!")
+    
+    execlock.unlock()
     
 if __name__ == '__main__':
     main()
