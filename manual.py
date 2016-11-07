@@ -110,7 +110,7 @@ def g_guessNfo(inputfile):
                     log.debug("Found nfo file %s" % fullfile)
                     with open(fullfile, 'r') as urls_in:
                         for line in urls_in:
-                            links = re.findall(r"(http\:\/\/www\.imdb\.com/(?:title/)?(tt\d+))", line)
+                            links = re.findall(r"((?:http\:\/\/)?www\.imdb\.com/(?:title/)?(tt\d+))", line)
                             if links:
                                 log.debug("Extracted IMDB ID %s from %s" % (links[0][1], file))
                                 return links[0][1]

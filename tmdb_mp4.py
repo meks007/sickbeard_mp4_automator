@@ -382,6 +382,7 @@ class tmdbSearch:
     def info(self, guess):
         movieinfo = {}
         if not 'tmdbid' in guess:
+            tmdbid = None
             for guess in reversed(guess['titles']):
             # iterate reversed because year-based entries are at the bottom of the list, but yield better results.
                 title = guess[0]

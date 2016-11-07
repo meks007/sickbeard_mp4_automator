@@ -92,6 +92,7 @@ class ReadSettings:
                         'meks-metadata': '',
                         'meks-nfosearch': 'True',
                         'meks-nfopaths': '.|..',
+                        'meks-walk-ignore': 'ignore.part,ignore.skip,recode.ignore,recode.skip',
                         'fullpathguess': 'True',
                         'tagfile': 'True',
                         'tag-language': 'en',
