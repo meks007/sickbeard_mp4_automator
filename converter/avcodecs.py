@@ -714,10 +714,18 @@ class H264QSV(H264Codec):
     """
     codec_name = 'h264qsv'
     ffmpeg_codec_name = 'h264_qsv'
-
+    encoder_options = H264Codec.encoder_options.copy()
+    encoder_options.update({
+        'look_ahead': int,  # qsv look_ahead value
+    })
     def _codec_specific_produce_ffmpeg_list(self, safe, stream=0):
-        optlist = []
-        optlist.extend(['-look_ahead', '0'])
+        optlist = super(H264QSV, self)._codec_specific_produce_ffmpeg_list(safe,stream=0)
+        optlist.extend(['-look_ahead', str(safe['look_ahead'])])
+        if '-crf' in optlist:
+            optlist.extend(['-q', str(safe['quality'])])
+            i = optlist.index('-crf')
+            del optlist[i+1]
+            del optlist[i]
         return optlist
 
 

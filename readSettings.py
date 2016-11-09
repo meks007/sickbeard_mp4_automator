@@ -58,7 +58,6 @@ class ReadSettings:
         # Default MP4 conversion settings
         mp4_defaults = {'ffmpeg': 'ffmpeg.exe',
                         'ffprobe': 'ffprobe.exe',
-                        'threads': 'auto',
                         'output_directory': '',
                         'copy_to': '',
                         'move_to': 'True',
@@ -79,7 +78,7 @@ class ReadSettings:
                         'video-bitrate': '',
                         'video-max-width': '',
                         'h264-max-level': '',
-                        'use-qsv-decoder-with-encoder': 'True',
+                        'use-qsv-decoder-with-encoder': 'False',
                         'subtitle-codec': 'mov_text',
                         'subtitle-language': '',
                         'subtitle-default-language': '',
@@ -93,6 +92,8 @@ class ReadSettings:
                         'meks-nfosearch': 'True',
                         'meks-nfopaths': '.|..',
                         'meks-walk-ignore': 'ignore.part,ignore.skip,recode.ignore,recode.skip',
+                        'meks-qsv-lookahead': '1',
+                        'meks-same-codec-copy': 'True',
                         'fullpathguess': 'True',
                         'tagfile': 'True',
                         'tag-language': 'en',
@@ -197,12 +198,6 @@ class ReadSettings:
         section = "MP4"
         self.ffmpeg = os.path.normpath(self.raw(config.get(section, "ffmpeg")))  # Location of FFMPEG.exe
         self.ffprobe = os.path.normpath(self.raw(config.get(section, "ffprobe")))  # Location of FFPROBE.exe
-        self.threads = config.get(section, "threads")  # Number of FFMPEG threads
-        try:
-            if int(self.threads) < 1:
-                self.threads = "auto"
-        except:
-            self.threads = "auto"
 
         self.output_dir = config.get(section, "output_directory")
         if self.output_dir == '':
@@ -365,9 +360,20 @@ class ReadSettings:
             self.meks_walk_ignore = None
         else:
             self.meks_walk_ignore = self.meks_walk_ignore.split(',')
+        self.meks_copysamecodec = config.getboolean(section, "meks-same-codec-copy")
         self.meks_nfosearch = config.getboolean(section, "meks-nfosearch")
         self.meks_nfopaths = config.get(section, 'meks-nfopaths').split('|')
-        
+        self.meks_qsv_lookahead = config.get(section, "meks-qsv-lookahead")
+        if self.meks_qsv_lookahead == '':
+            self.meks_qsv_lookahead = 0
+        else:
+            try:
+                self.meks_qsv_lookahead = int(self.meks_qsv_lookahead)
+            except:
+                log.exception("Invalid qsv lookahead value, using default (0)")
+                self.meks_qsv_lookahead = 0
+        if self.meks_qsv_lookahead > 0:
+            self.meks_video_quality = None
         self.vwidth = config.get(section, "video-max-width")
         if self.vwidth == '':
             self.vwidth = None

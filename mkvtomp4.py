@@ -9,7 +9,7 @@ import locale
 import signal
 
 from subprocess import Popen, PIPE
-from converter import Converter #, FFMpegConvertError
+from converter import Converter, FFMpegConvertError
 from extensions import valid_input_extensions, valid_output_extensions, bad_subtitle_codecs, valid_subtitle_extensions, subtitle_codec_extensions
 from babelfish import Language
 from mutagen.mp4 import MP4, MP4Cover
@@ -203,7 +203,7 @@ class MkvtoMp4:
         except:
             vbr = info.format.bitrate / 1000
 
-        if info.video.codec.lower() in self.settings.vcodec and not self.needProcessing(inputfile):
+        if info.video.codec.lower() in self.settings.vcodec and self.settings.meks_copysamecodec:
             vcodec = 'copy'
         else:
             vcodec = self.settings.vcodec[0]
@@ -522,20 +522,25 @@ class MkvtoMp4:
             'audio': audio_settings,
             'subtitle': subtitle_settings,
             'preopts': ['-fix_sub_duration'],
-            'postopts': ['-threads', self.settings.threads]
+            'postopts': [],
         }
 
-        # If using h264qsv, add the codec in front of the input for decoding
-        if vcodec == "h264qsv" and info.video.codec.lower() == "h264" and self.settings.qsv_decoder and (info.video.video_level / 10) < 5:
-            options['preopts'].extend(['-vcodec', 'h264_qsv'])
-
         # in h264, drop the constant bitrate and use the recommended quality settings.  ffmpeg default is 23 but our default is 20.
-        if vcodec == "h264":
+        if vcodec == "h264" or vcodec == "h264qsv":
             del options['video']['bitrate']
             options['video']['quality'] = self.settings.meks_video_quality if self.settings.meks_video_quality else 23
             options['video']['preset'] = self.settings.meks_h264_preset if self.settings.meks_h264_preset else 'medium'
             if self.settings.vbitrate is not None:
                 options['video']['maxbitrate'] = self.settings.vbitrate
+
+        # If using h264qsv, add the codec in front of the input for decoding
+        if vcodec == "h264qsv" and info.video.codec.lower() == "h264" and self.settings.qsv_decoder and (info.video.video_level / 10) < 5:
+            options['preopts'].extend(['-vcodec', 'h264_qsv'])
+        if vcodec == "h264qsv" and (info.video.video_level / 10) < 5:
+            options['video']['look_ahead'] = self.settings.meks_qsv_lookahead
+            if self.settings.meks_qsv_lookahead > 0:
+                del options['video']['quality']
+
         if self.settings.meks_metadata:
             options['video']['metadata'] = self.settings.meks_metadata
         
@@ -548,6 +553,7 @@ class MkvtoMp4:
             options['video']['pix_fmt'] = self.settings.pix_fmt[0]
         
         self.options = options
+
         return options
 
     # Encode a new file based on selected options, built in naming conflict resolution

@@ -38,6 +38,15 @@ There are 2 new options in autoProcess.ini available for specifying preset and q
 
 Note: If video-bitrate was specified then this turns into ffmpeg -maxrate. See https://trac.ffmpeg.org/wiki/Encode/H.264
 
+h264 QSV changes
+--------------
+- Specify `video-codec = h264qsv` to enable QSV encoding.
+- QSV look_ahead is now customizable with `meks-qsv-lookahead = (int)` (default: 0).
+- The same h264 values for quality, maxrate and preset apply for h264qsv.
+- quality (normally ffmpeg -crf) turns into -q IF `meks-qsv-lookahead = 0`
+- quality is omitted if `meks-qsv-lookahead = 1..31` as they are different rate methods and can't be used together.
+- `use-qsv-decoder-with-encoder = False` will force the input decoder to be h264_qsv regardless of how it's actually encoded.
+
 Recursive mass-processing
 --------------
 The manual processor (manual.py) has an option to specify an input folder rather than a file (nothing new).
@@ -99,6 +108,8 @@ Advanced file tagging
 
 Misc changes
 --------------
+- Using `meks_copysamecodec = True|False` same-codec copy operations can be disabled (default: True, enabled.). If disabled a transcode is forced even if the input file already has one of the desired `video-codec`s, otherwise the video stream is copied to the output file, ignoring any quality settings specified.
+- Threads setting removed as it is deprecated and completely removed on newer ffmpeg versions
 - Access to autoSettings.ini is unified:
 `from readSettings import settingsProvider`
 `settingsProvider().defaultSettings`
