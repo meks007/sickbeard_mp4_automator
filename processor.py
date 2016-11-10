@@ -20,6 +20,17 @@ class fileProcessor:
         self.converter = MkvtoMp4(settings)
     
     def validSource(self, inputfile):
+        if self.settings.meks_trans_ignore_s > 0:
+            fsize = os.path.getsize(inputfile)
+            if fsize < self.settings.meks_trans_ignore_s:
+                self.log.debug("File = %s, size = %s, lower limit = %s, skipped" % (inputfile, fsize, self.settings.meks_trans_ignore_s))
+                return False
+        if self.settings.meks_trans_ignore_n is not None:
+            fname = os.path.split(inputfile)[1].lower()
+            for i in self.settings.meks_trans_ignore_n:
+                if i.lower() in fname:
+                    self.log.debug("File = %s, ignore pattern match = %s, skipped" % (inputfile, i))
+                    return False
         return self.converter.validSource(inputfile)
     
     def tagInfo(self, tagmp4):

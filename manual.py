@@ -294,14 +294,7 @@ def processFile(inputfile, relativePath=None):
     execlock.renew()
     
     log.info("Found file - %s" % inputfile)
-    
-    #try:
     tagdata, tagmp4 = getTagData(inputfile)
-    #except:
-    #    log.error("Something happened during tagging. This file will not be tagged")
-    #    log.error("Re-run in non-conversion mode to tag this file once the error was resolved")
-    #    tagdata = True
-    #    tagmp4 = None
         
     if tagdata is not False:
         # this does everything from here.

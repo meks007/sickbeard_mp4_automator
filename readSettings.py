@@ -92,6 +92,8 @@ class ReadSettings:
                         'meks-nfosearch': 'True',
                         'meks-nfopaths': '.|..',
                         'meks-walk-ignore': 'ignore.part,ignore.skip,recode.ignore,recode.skip',
+                        'meks-transcode-ignore-names': 'sample',
+                        'meks-transcode-ignore-size': '0',
                         'meks-qsv-lookahead': '1',
                         'meks-same-codec-copy': 'True',
                         'fullpathguess': 'True',
@@ -360,6 +362,20 @@ class ReadSettings:
             self.meks_walk_ignore = None
         else:
             self.meks_walk_ignore = self.meks_walk_ignore.split(',')
+        self.meks_trans_ignore_n = config.get(section, 'meks-transcode-ignore-names').strip()
+        if self.meks_trans_ignore_n == '':
+            self.meks_trans_ignore_n = None
+        else:
+            self.meks_trans_ignore_n = self.meks_trans_ignore_n.split(',')
+        self.meks_trans_ignore_s = config.get(section, "meks-transcode-ignore-size")
+        if self.meks_trans_ignore_s == '':
+            self.meks_trans_ignore_s = 0
+        else:
+            try:
+                self.meks_trans_ignore_s = int(self.meks_trans_ignore_s)
+            except:
+                log.exception("Invalid transcode ignore size value, using default (0)")
+                self.meks_trans_ignore_s = 0
         self.meks_copysamecodec = config.getboolean(section, "meks-same-codec-copy")
         self.meks_nfosearch = config.getboolean(section, "meks-nfosearch")
         self.meks_nfopaths = config.get(section, 'meks-nfopaths').split('|')
