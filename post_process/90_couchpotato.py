@@ -39,7 +39,7 @@ def getApiUrl():
 
 def main():
 	if 'MH_FILES' in os.environ:
-		if 'MH_IMDBID' in os.environ:
+		if 'MH_IMDBID' in os.environ or 'MH_TAGGED' not in os.environ::
 			log.info("CouchPotato Post Processor started.")
 			apiPostProcess()
 			log.info("CouchPotato finished.")

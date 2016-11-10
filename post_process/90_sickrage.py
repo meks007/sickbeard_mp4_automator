@@ -44,7 +44,7 @@ def resultToBool(result):
 
 def main():
 	if 'MH_FILES' in os.environ:
-		if 'MH_TVDBID' in os.environ:
+		if 'MH_TVDBID' in os.environ or 'MH_TAGGED' not in os.environ:
 			log.info("Sickrage Post Processor started.")
 			apiPostProcess()
 			log.info("Sickrage finished.")

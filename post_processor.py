@@ -39,12 +39,14 @@ class PostProcessor:
 
     def setTV(self, tvdbid, season, episode):
         self.log.debug("Setting TV metadata")
+        self.post_process_environment['MH_TAGGED'] = str(1)
         self.post_process_environment['MH_TVDBID'] = str(tvdbid)
         self.post_process_environment['MH_SEASON'] = str(season)
         self.post_process_environment['MH_EPISODE'] = str(episode)
 
     def setMovie(self, imdbid):
         self.log.debug("Setting movie metadata")
+        self.post_process_environment['MH_TAGGED'] = str(1)
         self.post_process_environment['MH_IMDBID'] = str(imdbid)
 
     def run_scripts(self):

@@ -266,22 +266,23 @@ def getTagData(filename, args=None):
             # False if user skipped tagging
         
         if tagdata is not False:
-            # Evaluate appropriate MP4 handler
-            try:
-                if tagdata[0] is 1:
-                    imdbid = tagdata[1]
-                    tagmp4 = tmdb_mp4(imdbid, settings=settings)
-                elif tagdata[0] is 2:
-                    tmdbid = tagdata[1]
-                    tagmp4 = tmdb_mp4(tmdbid, True, settings=settings)
-                elif tagdata[0] is 3:
-                    tvdbid = int(tagdata[1])
-                    season = int(tagdata[2])
-                    episode = int(tagdata[3])
-                    tagmp4 = Tvdb_mp4(tvdbid, season, episode, settings=settings)
-            except Exception as e:
-                log.exception(e)
-                tagmp4 = None
+            if tagdata is not None:
+                # Evaluate appropriate MP4 handler
+                try:
+                    if tagdata[0] is 1:
+                        imdbid = tagdata[1]
+                        tagmp4 = tmdb_mp4(imdbid, settings=settings)
+                    elif tagdata[0] is 2:
+                        tmdbid = tagdata[1]
+                        tagmp4 = tmdb_mp4(tmdbid, True, settings=settings)
+                    elif tagdata[0] is 3:
+                        tvdbid = int(tagdata[1])
+                        season = int(tagdata[2])
+                        episode = int(tagdata[3])
+                        tagmp4 = Tvdb_mp4(tvdbid, season, episode, settings=settings)
+                except Exception as e:
+                    log.exception(e)
+                    tagmp4 = None
             
             if tagmp4 is None:
                 log.warning("Unknown metadata received, file will not be tagged")
@@ -293,6 +294,7 @@ def getTagData(filename, args=None):
 def processFile(inputfile, relativePath=None):
     execlock.renew()
     
+    log.info("")
     log.info("Found file - %s" % inputfile)
     tagdata, tagmp4 = getTagData(inputfile)
         
