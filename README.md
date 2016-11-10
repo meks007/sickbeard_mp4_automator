@@ -67,6 +67,11 @@ Download/Videos
 Download/ISO - ['recode.skip']`
 - A hierarchy walk would then skip all files and subfolders in Apps/* and ISO/* and only allow processing of files directly in Download as well as Videos/*
 
+Furthermore in mass processing mode, one can ignore files based on name and size restrictions:
+- `meks-transcode-ignore-names = sample,example` (default: sample)
+- `meks-transcode-ignore-size = 40000000` (in Bytes, default: 0)
+Note that these restrictions do not apply if a file is targeted directly. They are only applied during hierarchy walk.
+
 Copy-To and Move-To by file type
 --------------
 Suppose you use this converter for converting and tagging movies as well as TV shows. Further down the chain, after conversion is finished and the file is ready for post processing by SR/CP, it might be useful to separate the output files in folders for movies and TV shows. Originally this was not possible as you could either copy all files or move all files to one or multiple folders, but you would end up with all files in the same folder.
