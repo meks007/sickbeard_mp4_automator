@@ -13,7 +13,7 @@ log = LoggingAdapter.getLogger()
 
 def apiPostProcess():
 	log.info("Triggering Sickrage Post Process")
-	api_url = getApiUrl() + "cmd=postprocess&is_priority=1"
+	api_url = getApiUrl() + "cmd=postprocess&is_priority=1&force_replace=1"
 	refresh = json.load(urllib.urlopen(api_url))
 	if resultToBool(refresh["result"]):
 		log.debug("Post Process was initiated.")

@@ -415,6 +415,9 @@ def main():
         settings.postprocess = False
         log.info("No post processing enabled")
 
+    processor = fileProcessor(settings=settings)
+    searcher = tmdbSearch(settings=settings)
+
     # Establish the path we will be working with
     if (args['input']):
         path = (str(args['input']))
@@ -424,9 +427,6 @@ def main():
             pass
     else:
         path = getValue("Enter path to file")
-
-    processor = fileProcessor(settings=settings)
-    searcher = tmdbSearch(settings=settings)
     
     if os.path.isdir(path):
         walkDir(path, preserveRelative=args['preserveRelative'])
