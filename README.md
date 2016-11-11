@@ -30,6 +30,12 @@ Staging workflow:
 - Transition => Rename to final mp4 file
 - Replication => Copy-To => Move-To
 
+Finer grained conrol of codec processing
+--------------
+- Using `meks_same-vcodec-copy = True|False` same-video-codec copy operations can be disabled (default: True, enabled.). If disabled a video transcode is forced even if the input file already has one of the desired `video-codec`s, otherwise the video stream is copied to the output file, ignoring any quality settings specified.
+- Similarily, using `meks_same-acodec-copy = True|False` same-audio-codec copy operation can be disabled (default: True, enabled.)
+- Specify if ADTS should be converted to ASC using `meks-aac-adtstoasc = True|False` (default: True). If input audio codec is AAC and same-acodec-copy is True, then convert an ADTS stream to ASC using ffmpeg bitstream filters.
+
 h264 Preset and Quality
 --------------
 There are 2 new options in autoProcess.ini available for specifying preset and quality during conversions:
@@ -110,10 +116,10 @@ Advanced file tagging
 - Only e first nfo file with a valid IMDB link will be used for tagging. Only the first IMDB link in that file will be used. Any subsequent nfo files or multiple links within the same file are disregarded.
 - Options for `-imdb` and `-tmdb` as well as any IMDB and/or TMDB related tagging attempts can be fully applied to either TMDB or TVDB data, depending on the class that is being returned from TMDB. So for example if you specified a TV show via `-tmdb 47110815` then that lookup would yield a "series" answer from TMDB and that request would be proxied to a TVDB title search. The same is valid for: TV show via -imdb, Movie via -imdb.
 - Tagging order is: manual.py arguments > nfo > GuessIt > no tag
+- The ID3v2 version can be specified using `meks-id3v2vers = <int>` (default: 3, for compatibility with Windows)
 
 Misc changes
 --------------
-- Using `meks_copysamecodec = True|False` same-codec copy operations can be disabled (default: True, enabled.). If disabled a transcode is forced even if the input file already has one of the desired `video-codec`s, otherwise the video stream is copied to the output file, ignoring any quality settings specified.
 - Threads setting removed as it is deprecated and completely removed on newer ffmpeg versions
 - Access to autoSettings.ini is unified:
 `from readSettings import settingsProvider`

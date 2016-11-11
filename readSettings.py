@@ -95,7 +95,10 @@ class ReadSettings:
                         'meks-transcode-ignore-names': 'sample',
                         'meks-transcode-ignore-size': '0',
                         'meks-qsv-lookahead': '1',
-                        'meks-same-codec-copy': 'True',
+                        'meks-same-vcodec-copy': 'True',
+                        'meks-same-acodec-copy': 'True',
+                        'meks-aac-adtstoasc': 'False',
+                        'meks-id3v2vers': '3',
                         'fullpathguess': 'True',
                         'tagfile': 'True',
                         'tag-language': 'en',
@@ -376,7 +379,9 @@ class ReadSettings:
             except:
                 log.exception("Invalid transcode ignore size value, using default (0)")
                 self.meks_trans_ignore_s = 0
-        self.meks_copysamecodec = config.getboolean(section, "meks-same-codec-copy")
+        self.meks_copysamevcodec = config.getboolean(section, "meks-same-vcodec-copy")
+        self.meks_copysameacodec = config.getboolean(section, "meks-same-acodec-copy")
+        self.meks_adtstoasc = config.getboolean(section, 'meks-aac-adtstoasc')
         self.meks_nfosearch = config.getboolean(section, "meks-nfosearch")
         self.meks_nfopaths = config.get(section, 'meks-nfopaths').split('|')
         self.meks_qsv_lookahead = config.get(section, "meks-qsv-lookahead")
@@ -390,6 +395,16 @@ class ReadSettings:
                 self.meks_qsv_lookahead = 0
         if self.meks_qsv_lookahead > 0:
             self.meks_video_quality = None
+        self.meks_id3v2vers = config.get(section, "meks-id3v2vers")
+        if self.meks_id3v2vers == '':
+            self.meks_id3v2vers = 3
+        else:
+            try:
+                self.meks_id3v2vers = float(self.meks_id3v2vers)
+            except:
+                log.exception("Invalid ID3v2 version, defaulting to 3")
+                self.meks_id3v2vers = 3
+            
         self.vwidth = config.get(section, "video-max-width")
         if self.vwidth == '':
             self.vwidth = None

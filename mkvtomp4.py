@@ -203,7 +203,7 @@ class MkvtoMp4:
         except:
             vbr = info.format.bitrate / 1000
 
-        if info.video.codec.lower() in self.settings.vcodec and self.settings.meks_copysamecodec:
+        if info.video.codec.lower() in self.settings.vcodec and self.settings.meks_copysamevcodec:
             vcodec = 'copy'
         else:
             vcodec = self.settings.vcodec[0]
@@ -303,7 +303,7 @@ class MkvtoMp4:
                     abitrate = a.audio_channels * 128 if (a.audio_channels * self.settings.abitrate) > (a.audio_channels * 128) else (a.audio_channels * self.settings.abitrate)
                 else:
                     # If desired codec is the same as the source codec, copy to avoid quality loss
-                    acodec = 'copy' if a.codec.lower() in self.settings.acodec else self.settings.acodec[0]
+                    acodec = 'copy' if a.codec.lower() in self.settings.acodec and self.settings.meks_copysameacodec else self.settings.acodec[0]
                     # Audio channel adjustments
                     if self.settings.maxchannels and a.audio_channels > self.settings.maxchannels:
                         audio_channels = self.settings.maxchannels
@@ -352,7 +352,7 @@ class MkvtoMp4:
                     'disposition': disposition,
                 }})
 
-                if acodec == 'copy' and a.codec == 'aac':
+                if acodec == 'copy' and a.codec == 'aac' and self.settings.meks_adtstoasc:
                     audio_settings[l]['bsf'] = 'aac_adtstoasc'
                 l = l + 1
 
@@ -517,7 +517,8 @@ class MkvtoMp4:
                 'codec': vcodec,
                 'map': info.video.index,
                 'bitrate': vbitrate,
-                'level': self.settings.h264_level
+                'level': self.settings.h264_level,
+                'id3v2vers': self.settings.meks_id3v2vers
             },
             'audio': audio_settings,
             'subtitle': subtitle_settings,

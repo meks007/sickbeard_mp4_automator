@@ -12,7 +12,6 @@ import re
 import logging
 from _utils import LoggingAdapter, executionLocker
 log = LoggingAdapter.getLogger("MANUAL", {})
-log.info("Manual processor started - using interpreter %s" % sys.executable)
 
 from readSettings import settingsProvider
 from processor import fileProcessor
@@ -346,102 +345,106 @@ def main():
     global searcher
     global execlock
     
+    log.debug("")
+    log.debug("<<<<<<<<<<<<<<<<<<<<< LAUNCH >>>>>>>>>>>>>>>>>>>>>")
+    log.info("Manual processor started - using interpreter %s" % sys.executable)
+    
     execlock = executionLocker()
     if not execlock.islocked():
         execlock.lock()
+        
+        parser.add_argument('-i', '--input', help='The source that will be converted. May be a file or a directory')
+        parser.add_argument('-c', '--config', help='Specify an alternate configuration file location')
+        parser.add_argument('-a', '--auto', action="store_true", help="Enable auto mode, the script will not prompt you for any further input, good for batch files. It will guess the metadata using guessit")
+        parser.add_argument('-tv', '--tvdbid', help="Set the TVDB ID for a tv show")
+        parser.add_argument('-s', '--season', help="Specifiy the season number")
+        parser.add_argument('-e', '--episode', help="Specify the episode number")
+        parser.add_argument('-imdb', '--imdbid', help="Specify the IMDB ID for a movie")
+        parser.add_argument('-tmdb', '--tmdbid', help="Specify theMovieDB ID for a movie")
+        parser.add_argument('-nm', '--nomove', action='store_true', help="Overrides and disables the custom moving of file options that come from output_dir and move-to")
+        parser.add_argument('-nc', '--nocopy', action='store_true', help="Overrides and disables the custom copying of file options that come from output_dir and move-to")
+        parser.add_argument('-nd', '--nodelete', action='store_true', help="Overrides and disables deleting of original files")
+        parser.add_argument('-nt', '--notag', action="store_true", help="Overrides and disables tagging when using the automated option")
+        parser.add_argument('-np', '--nopost', action="store_true", help="Overrides and disables the execution of additional post processing scripts")
+        parser.add_argument('-pr', '--preserveRelative', action='store_true', help="Preserves relative directories when processing multiple files using the copy-to or move-to functionality")
+        parser.add_argument('-cmp4', '--convertmp4', action='store_true', help="Overrides convert-mp4 setting in autoProcess.ini enabling the reprocessing of mp4 files")
+        #parser.add_argument('-m', '--moveto', help="Override move-to value setting in autoProcess.ini changing the final destination of the file")
+    
+        args = vars(parser.parse_args())
+    
+        # Setup the silent mode
+        silent = args['auto']
+    
+        log.debug("%sbit Python" % (struct.calcsize("P") * 8))
+    
+        # Settings overrides
+        settings = None
+        if(args['config']):
+            if os.path.exists(args['config']):
+                log.info('Using configuration file "%s"' % (args['config']))
+                settings = ReadSettings(os.path.split(args['config'])[0], os.path.split(args['config'])[1])
+            elif os.path.exists(os.path.join(os.path.dirname(sys.argv[0]), args['config'])):
+                log.info('Using configuration file "%s"' % (args['config']))
+                settings = ReadSettings(os.path.dirname(sys.argv[0]), args['config'])
+        if settings is None:
+            if args['config']:
+                log.info('Configuration file "%s" not present, using default configuration' % (args['config']))
+            settings = settingsProvider().defaultSettings
+        
+        if (args['nomove']):
+            settings.output_dir = None
+            settings.moveto = None
+            log.info("No-move enabled")
+        #if (args['moveto']):
+        #    settings.moveto = args['moveto']
+        #    log.info("Overriden move-to to " + args['moveto'])
+        if (args['nocopy']):
+            settings.copyto = None
+            log.info("No-copy enabled")
+        if (args['nodelete']):
+            settings.delete = False
+            log.info("No-delete enabled")
+        if (args['convertmp4']):
+            settings.processMP4 = True
+            log.info("Reprocessing of MP4 files enabled")
+        if (args['notag']):
+            settings.tagfile = False
+            log.info("No-tagging enabled")
+        if (args['nopost']):
+            settings.postprocess = False
+            log.info("No post processing enabled")
+    
+        processor = fileProcessor(settings=settings)
+        searcher = tmdbSearch(settings=settings)
+    
+        # Establish the path we will be working with
+        if (args['input']):
+            path = (str(args['input']))
+            try:
+                path = glob.glob(path)[0]
+            except:
+                pass
+        else:
+            path = getValue("Enter path to file")
+        
+        if os.path.isdir(path):
+            walkDir(path, preserveRelative=args['preserveRelative'])
+        elif os.path.isfile(path):
+            processFile(path)
+        elif not os.path.isfile(path) and not os.path.isdir(path):
+            log.error("File not found - %s" % (path))
+        else:
+            try:
+                log.error("File is not in the correct format - %s" % (path))
+            except:
+                log.error("File is not in the correct format")
+        log.info("All done!")
+    
+        execlock.unlock()
     else:
         log.error("Unable to acquire exclusive lock.")
         log.error("Wait until the previous run is finished or a deadlock expires. Remove run.lock to release the lock immediately.")
-        sys.exit(0)
-    
-    parser.add_argument('-i', '--input', help='The source that will be converted. May be a file or a directory')
-    parser.add_argument('-c', '--config', help='Specify an alternate configuration file location')
-    parser.add_argument('-a', '--auto', action="store_true", help="Enable auto mode, the script will not prompt you for any further input, good for batch files. It will guess the metadata using guessit")
-    parser.add_argument('-tv', '--tvdbid', help="Set the TVDB ID for a tv show")
-    parser.add_argument('-s', '--season', help="Specifiy the season number")
-    parser.add_argument('-e', '--episode', help="Specify the episode number")
-    parser.add_argument('-imdb', '--imdbid', help="Specify the IMDB ID for a movie")
-    parser.add_argument('-tmdb', '--tmdbid', help="Specify theMovieDB ID for a movie")
-    parser.add_argument('-nm', '--nomove', action='store_true', help="Overrides and disables the custom moving of file options that come from output_dir and move-to")
-    parser.add_argument('-nc', '--nocopy', action='store_true', help="Overrides and disables the custom copying of file options that come from output_dir and move-to")
-    parser.add_argument('-nd', '--nodelete', action='store_true', help="Overrides and disables deleting of original files")
-    parser.add_argument('-nt', '--notag', action="store_true", help="Overrides and disables tagging when using the automated option")
-    parser.add_argument('-np', '--nopost', action="store_true", help="Overrides and disables the execution of additional post processing scripts")
-    parser.add_argument('-pr', '--preserveRelative', action='store_true', help="Preserves relative directories when processing multiple files using the copy-to or move-to functionality")
-    parser.add_argument('-cmp4', '--convertmp4', action='store_true', help="Overrides convert-mp4 setting in autoProcess.ini enabling the reprocessing of mp4 files")
-    #parser.add_argument('-m', '--moveto', help="Override move-to value setting in autoProcess.ini changing the final destination of the file")
-
-    args = vars(parser.parse_args())
-
-    # Setup the silent mode
-    silent = args['auto']
-
-    log.debug("%sbit Python" % (struct.calcsize("P") * 8))
-
-    # Settings overrides
-    settings = None
-    if(args['config']):
-        if os.path.exists(args['config']):
-            log.info('Using configuration file "%s"' % (args['config']))
-            settings = ReadSettings(os.path.split(args['config'])[0], os.path.split(args['config'])[1])
-        elif os.path.exists(os.path.join(os.path.dirname(sys.argv[0]), args['config'])):
-            log.info('Using configuration file "%s"' % (args['config']))
-            settings = ReadSettings(os.path.dirname(sys.argv[0]), args['config'])
-    if settings is None:
-        if args['config']:
-            log.info('Configuration file "%s" not present, using default configuration' % (args['config']))
-        settings = settingsProvider().defaultSettings
-    
-    if (args['nomove']):
-        settings.output_dir = None
-        settings.moveto = None
-        log.info("No-move enabled")
-    #if (args['moveto']):
-    #    settings.moveto = args['moveto']
-    #    log.info("Overriden move-to to " + args['moveto'])
-    if (args['nocopy']):
-        settings.copyto = None
-        log.info("No-copy enabled")
-    if (args['nodelete']):
-        settings.delete = False
-        log.info("No-delete enabled")
-    if (args['convertmp4']):
-        settings.processMP4 = True
-        log.info("Reprocessing of MP4 files enabled")
-    if (args['notag']):
-        settings.tagfile = False
-        log.info("No-tagging enabled")
-    if (args['nopost']):
-        settings.postprocess = False
-        log.info("No post processing enabled")
-
-    processor = fileProcessor(settings=settings)
-    searcher = tmdbSearch(settings=settings)
-
-    # Establish the path we will be working with
-    if (args['input']):
-        path = (str(args['input']))
-        try:
-            path = glob.glob(path)[0]
-        except:
-            pass
-    else:
-        path = getValue("Enter path to file")
-    
-    if os.path.isdir(path):
-        walkDir(path, preserveRelative=args['preserveRelative'])
-    elif os.path.isfile(path):
-        processFile(path)
-    elif not os.path.isfile(path) and not os.path.isdir(path):
-        log.error("File not found - %s" % (path))
-    else:
-        try:
-            log.error("File is not in the correct format - %s" % (path))
-        except:
-            log.error("File is not in the correct format")
-    log.info("All done!")
-    
-    execlock.unlock()
+    log.debug("~~~~~~~~~~~~~~~~~~~~~ FINISH ~~~~~~~~~~~~~~~~~~~~~")
     
 if __name__ == '__main__':
     main()
