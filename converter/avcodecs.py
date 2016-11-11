@@ -725,7 +725,7 @@ class H264QSV(H264Codec):
         optlist = super(H264QSV, self)._codec_specific_produce_ffmpeg_list(safe,stream=0)
         optlist.extend(['-look_ahead', str(safe['look_ahead'])])
         if '-crf' in optlist:
-            optlist.extend(['-q', str(safe['quality'])])
+            optlist.extend(['-q:v', str(safe['quality'])])
             i = optlist.index('-crf')
             del optlist[i+1]
             del optlist[i]
