@@ -99,6 +99,7 @@ class ReadSettings:
                         'meks-same-acodec-copy': 'True',
                         'meks-aac-adtstoasc': 'False',
                         'meks-id3v2vers': '3',
+                        'meks-tag-rename': 'False',
                         'fullpathguess': 'True',
                         'tagfile': 'True',
                         'tag-language': 'en',
@@ -383,6 +384,7 @@ class ReadSettings:
         self.meks_copysameacodec = config.getboolean(section, "meks-same-acodec-copy")
         self.meks_adtstoasc = config.getboolean(section, 'meks-aac-adtstoasc')
         self.meks_nfosearch = config.getboolean(section, "meks-nfosearch")
+        self.meks_tagrename = config.getboolean(section, "meks-tag-rename")
         self.meks_nfopaths = config.get(section, 'meks-nfopaths').split('|')
         self.meks_qsv_lookahead = config.get(section, "meks-qsv-lookahead")
         if self.meks_qsv_lookahead == '':

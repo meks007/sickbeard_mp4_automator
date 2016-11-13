@@ -69,6 +69,7 @@ class fileProcessor:
                     self.converter.QTFS(output['output'])
                 
                 # REPLICATE
+                output['tag'] = tagmp4
                 output_files = self.converter.replicate(output, relativePath=relativePath)            
                 
                 # FINALIZE

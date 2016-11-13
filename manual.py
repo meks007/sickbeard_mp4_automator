@@ -290,11 +290,11 @@ def getTagData(filename, args=None):
     
     return [tagdata, tagmp4]
 
-def processFile(inputfile, relativePath=None):
+def processFile(inputfile, fileno=[1,1], relativePath=None):
     execlock.renew()
     
     log.info("")
-    log.info("Found file - %s" % inputfile)
+    log.info("File %s/%s - %s" % (fileno[0], fileno[1], inputfile))
     tagdata, tagmp4 = getTagData(inputfile)
         
     if tagdata is not False:
@@ -330,13 +330,24 @@ def walkDir(dir, preserveRelative=False):
                 log.debug("File added to queue: %s" % filepath)
     
     log.info("%s files ready for processing" % len(files))
-    for filepath in files:
-        if os.path.isfile(filepath):
-            try:
-                relative = os.path.split(os.path.relpath(filepath, dir))[0] if preserveRelative else None
-                processFile(filepath, relativePath=relative)
-            except:
-                log.exception("An unexpected error occurred, processing of this file was not attempted")
+    
+    if len(files) > 0:
+        log.debug("The following files were added to the processing queue:")
+        
+        i = 0
+        for filepath in files:
+            i = i + 1
+            log.debug("%s/%s - %s" % (i, len(files), files[i-1]))
+        
+        i = 0
+        for filepath in files:
+            i = i + 1
+            if os.path.isfile(filepath):
+                try:
+                    relative = os.path.split(os.path.relpath(filepath, dir))[0] if preserveRelative else None
+                    processFile(filepath, [i, len(files)], relativePath=relative)
+                except:
+                    log.exception("An unexpected error occurred, processing of this file was not attempted")
 
 def main():
     global settings

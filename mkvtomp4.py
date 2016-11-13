@@ -9,6 +9,8 @@ import locale
 import signal
 
 from subprocess import Popen, PIPE
+from random import randint
+
 from converter import Converter, FFMpegConvertError
 from extensions import valid_input_extensions, valid_output_extensions, bad_subtitle_codecs, valid_subtitle_extensions, subtitle_codec_extensions
 from babelfish import Language
@@ -569,6 +571,11 @@ class MkvtoMp4:
         except:
             outputfile = os.path.join(output_dir, filename + "." + self.settings.output_extension)
         
+        if os.path.isfile(outputfile):
+            self.log.debug("Output file exists - randomizing file name")
+            f, e = os.path.splitext(outputfile)
+            outputfile = f + "_" + str(randint(1000,9999)) + e
+        
         self.log.debug("  Input directory: %s" % input_dir)
         self.log.debug("  File name: %s" % filename)
         self.log.debug("  Input extension: %s" % input_extension)
@@ -669,8 +676,8 @@ class MkvtoMp4:
                 self.log.warning("QT FastStart did not run - perhaps moov atom was at the start already")
                 return inputfile
 
-    def transitionStaging(self, outputfile, finaloutputfile):
-        if self.settings.meks_staging and outputfile is not None and finaloutputfile is not None:
+    def transitionStaging(self, outputfile, finaloutputfile, forceStaging=False):
+        if (forceStaging or self.settings.meks_staging) and outputfile is not None and finaloutputfile is not None:
             if not outputfile == finaloutputfile:
                 try:
                     if self.removeFile(finaloutputfile, 2, 10, outputfile):
@@ -709,6 +716,38 @@ class MkvtoMp4:
             self.log.exception("Error determining if file is TV or Movie, falling back to unknown")
         self.log.info("No type-based Copy-to operations will be executed, file is not tagged.")
         return 0, ["all"]
+    
+    def tagRename(self, outputfile, finaloutput, tmkey, tagmp4):
+        import guessit
+        
+        staging = False
+        l = []
+        
+        if self.settings.meks_tagrename:
+            if tmkey == 1 or tmkey == 2:
+                l = [tagmp4.title, tagmp4.date[:4], self.settings.output_extension]
+                f = "%s (%s).%s" % tuple(l)
+                g = guessit.guess_file_info(f)
+                f = ("%s %s.%s" % (g['title'], g['year'], self.settings.output_extension)).replace(' ', '.')
+            elif tmkey == 3:
+                l = [tagmp4.show, tagmp4.airdate[:4], str(tagmp4.season).zfill(2), str(tagmp4.episode).zfill(2), tagmp4.title, self.settings.output_extension]
+                f = "%s (%s) S%sE%s %s.%s" % tuple(l)
+                g = guessit.guess_file_info(f)
+                f = ("%s %s S%sE%s %s.%s" % (g['series'], g['year'], str(g['season']).zfill(2), str(g['episodeNumber']).zfill(2), g['title'], self.settings.output_extension)).replace(' ', '.')
+            if len(l):
+                self.log.debug("Temporarily enabled staging due to tag rename operation")
+                staging = True
+                
+                self.log.debug("Queued rename:")
+                if self.settings.meks_staging:
+                    o = finaloutput
+                else:
+                    o = outputfile
+                od = os.path.split(o)[0]
+                finaloutput = os.path.join(od, f)
+                self.log.debug("  Previous final output file: %s" % o)
+                self.log.debug("  New final output file: %s" % finaloutput)
+        return [staging, finaloutput]
         
     def cptoDestinations(self, cptypes):
         cpto = []
@@ -722,19 +761,22 @@ class MkvtoMp4:
     # Makes additional copies of the input file in each directory specified in the copy_to option
     def replicate(self, process_output, relativePath=None):
         self.log.info(">>> Replicating ...")
+        
+        tmkey, cptypes = self.tvOrMovie(process_output['output'])
+        cpdests = self.cptoDestinations(cptypes)
+        
+        forceStaging, finaloutput  = self.tagRename(process_output['output'], process_output['finaloutput'], tmkey, process_output['tag'])
+        
         # transition from staging to final just before replication.
         # best time to transition since all conversions are already done at this point.
         try:
-            inputfile = self.transitionStaging(process_output['output'], process_output['finaloutput'])
+            inputfile = self.transitionStaging(process_output['output'], finaloutput, forceStaging=forceStaging)
             if not inputfile:
                 return [process_output['output']]
         except:
             raise TypeError("invalid output data")
         
-        tmkey, cptypes = self.tvOrMovie(inputfile)
-        cpdests = self.cptoDestinations(cptypes)
         files = [inputfile]
-        
         if len(cpdests):
             self.log.debug("Copy-to option is enabled")
             for cpdest in cpdests:
