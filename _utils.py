@@ -50,7 +50,7 @@ class executionLocker():
                     return False
                 else:
                     raise(e)
-            lockexp = lockmt + ( 180 * 60 )
+            lockexp = lockmt + ( 360 * 60 )
             log.info("Found valid lock: %s, expires: %s" % (datetime.datetime.fromtimestamp(lockmt).strftime('%Y-%m-%d %H:%M:%S'), datetime.datetime.fromtimestamp(lockexp).strftime('%Y-%m-%d %H:%M:%S')))
             if lockexp < time.time():
                 log.debug("!!! RELEASING DEADLOCK !!!")

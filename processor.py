@@ -33,6 +33,11 @@ class fileProcessor:
                     return False
         return self.converter.validSource(inputfile)
     
+    def getFfprobeData(self, inputfile):
+        return self.converter.getFfprobeData(inputfile)
+    def getPrimaryLanguage(self, inputfile):
+        return self.converter.getPrimaryLanguage(inputfile)
+        
     def tagInfo(self, tagmp4):
         if tagmp4 is not None:
             if tagmp4.provider == "imdb" or tagmp4.provider == "tmdb":

@@ -373,7 +373,7 @@ class FFMpeg(object):
             cmds = clean_cmds
         except:
             logger.exception("There was an error making all command line parameters a string")
-        logger.debug('Spawning ffmpeg with command: ' + ' '.join(cmds))
+        logger.debug('Spawning ' + os.path.split(cmds[0])[1] + ' with command: ' + ' '.join(cmds))
         return Popen(cmds, shell=False, stdin=PIPE, stdout=PIPE, stderr=PIPE,
                      close_fds=(os.name != 'nt'), startupinfo=None)
 

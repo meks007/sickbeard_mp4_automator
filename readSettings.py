@@ -100,6 +100,7 @@ class ReadSettings:
                         'meks-aac-adtstoasc': 'False',
                         'meks-id3v2vers': '3',
                         'meks-tag-rename': 'False',
+                        'meks-tag-language-auto' : 'False',
                         'fullpathguess': 'True',
                         'tagfile': 'True',
                         'tag-language': 'en',
@@ -386,6 +387,7 @@ class ReadSettings:
         self.meks_nfosearch = config.getboolean(section, "meks-nfosearch")
         self.meks_tagrename = config.getboolean(section, "meks-tag-rename")
         self.meks_nfopaths = config.get(section, 'meks-nfopaths').split('|')
+        self.meks_taglangauto = config.get(section, "meks-tag-language-auto")
         self.meks_qsv_lookahead = config.get(section, "meks-qsv-lookahead")
         if self.meks_qsv_lookahead == '':
             self.meks_qsv_lookahead = 0

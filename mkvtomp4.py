@@ -7,6 +7,7 @@ import shutil
 import logging
 import locale
 import signal
+#import pycountry
 
 from subprocess import Popen, PIPE
 from random import randint
@@ -691,12 +692,57 @@ class MkvtoMp4:
                     return False
         return outputfile
     
-    def tvOrMovie(self, inputfile):
-        cmds = [self.settings.ffprobe, '-v', 'quiet', '-print_format', 'json', '-show_format', inputfile]
+    def getFfprobeData(self, inputfile):
+        cmds = [self.settings.ffprobe, '-v', 'quiet', '-print_format', 'json', '-show_streams', '-show_format', inputfile]
         p = Popen(cmds, shell=False, stdin=PIPE, stdout=PIPE, stderr=PIPE, close_fds=(os.name != 'nt'), startupinfo=None)
         stdout_data, _ = p.communicate()
         stdout_data = stdout_data.decode(console_encoding, errors='ignore')
         data = json.loads(stdout_data)
+        return data
+    
+    def getPrimaryLanguage(self, inputfile, iso='alpha2'):
+        lang = self.settings.taglanguage
+        data = self.getFfprobeData(inputfile)
+        
+        if iso not in ['alpha2','alpha3']:
+            log.error("Language conversion to %s is not supported. Falling back to alpha2." % iso)
+            iso = 'alpha2'
+        
+        try:
+            if not self.settings.meks_taglangauto:
+                raise Exception
+            
+            for stream in data["streams"]:
+                if stream['index'] == 1 and stream['codec_type'] == 'audio':
+                    metalang = stream["tags"]["language"]
+                    lang = metalang if not metalang == 'und' else lang
+                    
+                    try:
+                        l = Language.fromalpha3t(lang)
+                    except:
+                        try:
+                            l = Language.fromalpha3b(lang)
+                        except:
+                            try:
+                                l = Language.fromalpha2(lang)
+                            except:
+                                raise Exception
+                    
+                    if iso == 'alpha2':
+                        lang = [l.alpha2, l.name]
+                    elif iso == 'alpha3':
+                        lang = [l.alpha3, l.name]
+                    
+                    self.log.debug("Primary audio language is %s (%s)" % tuple(reversed(lang)))
+                    return lang
+        except:
+            lang = self.settings.taglanguage
+            self.log.debug("Unable to determine audio language or auto-detect is disabled, falling back to %s" % lang)
+            pass
+        return [lang, Language.fromalpha2(lang).name]
+    
+    def tvOrMovie(self, inputfile):
+        data = self.getFfprobeData(inputfile)
         try:
             if "encoder" in data["format"]["tags"]:
                 if "imdb" in data["format"]["tags"]["encoder"]:
@@ -724,27 +770,29 @@ class MkvtoMp4:
         l = []
         
         if self.settings.meks_tagrename:
+            if self.settings.meks_staging:
+                o = finaloutput
+            else:
+                o = outputfile
+            
+            lang = self.getPrimaryLanguage(o)
             if tmkey == 1 or tmkey == 2:
-                l = [tagmp4.title, tagmp4.date[:4], self.settings.output_extension]
-                f = "%s (%s).%s" % tuple(l)
+                l = [tagmp4.title, tagmp4.date[:4], lang[1], self.settings.output_extension]
+                f = "%s (%s) %s.%s" % tuple(l)
                 g = guessit.guess_file_info(f)
-                f = ("%s %s.%s" % (g['title'], g['year'], self.settings.output_extension)).replace(' ', '.')
+                f = ("%s %s %s.%s" % (g['title'], g['year'], lang[1], self.settings.output_extension)).replace(' ', '.')
             elif tmkey == 3:
-                l = [tagmp4.show, tagmp4.airdate[:4], str(tagmp4.season).zfill(2), str(tagmp4.episode).zfill(2), tagmp4.title, self.settings.output_extension]
-                f = "%s (%s) S%sE%s %s.%s" % tuple(l)
+                l = [tagmp4.show, tagmp4.airdate[:4], str(tagmp4.season).zfill(2), str(tagmp4.episode).zfill(2), tagmp4.title, lang[1], self.settings.output_extension]
+                f = "%s (%s) S%sE%s %s %s.%s" % tuple(l)
                 g = guessit.guess_file_info(f)
-                f = ("%s %s S%sE%s %s.%s" % (g['series'], g['year'], str(g['season']).zfill(2), str(g['episodeNumber']).zfill(2), g['title'], self.settings.output_extension)).replace(' ', '.')
+                f = ("%s %s S%sE%s %s %s.%s" % (g['series'], g['year'], str(g['season']).zfill(2), str(g['episodeNumber']).zfill(2), g['title'], lang[1], self.settings.output_extension)).replace(' ', '.')
             if len(l):
                 self.log.debug("Temporarily enabled staging due to tag rename operation")
                 staging = True
                 
-                self.log.debug("Queued rename:")
-                if self.settings.meks_staging:
-                    o = finaloutput
-                else:
-                    o = outputfile
                 od = os.path.split(o)[0]
                 finaloutput = os.path.join(od, f)
+                self.log.debug("Queued rename:")
                 self.log.debug("  Previous final output file: %s" % o)
                 self.log.debug("  New final output file: %s" % finaloutput)
         return [staging, finaloutput]

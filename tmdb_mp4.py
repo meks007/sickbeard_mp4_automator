@@ -309,7 +309,7 @@ class tmdbSearch:
         return None
     
     def search(self, title, year):
-        self.log.info("Fetching language-dependent data for %s from TMDB" % title)
+        self.log.debug("Fetching language-dependent data for %s from TMDB" % title)
         self.log.debug("With filter: (title = %s, year = %s, language = %s)" % (title, year, self.language))
         
         try:
@@ -332,7 +332,7 @@ class tmdbSearch:
         guess['year'] = guess['release_date'][:4]
         guess['tmdbid'] = info['id']
         guess['vote_count'] = info['vote_count']
-        guess['titles'] = [guess['title'], guess['year']]
+        guess['titles'] = [[guess['title'], guess['year']]]
         return guess
     
     def find(self, guess, external_source='imdb_id'):
@@ -343,7 +343,7 @@ class tmdbSearch:
             term = guess
             guess = {}
         
-        self.log.info("Finding language-independent data for %s in TMDB" % term)
+        self.log.debug("Finding language-independent data for %s in TMDB" % term)
         self.log.debug("With filter: (external_source = %s)" % external_source)
         
         try:
@@ -381,7 +381,8 @@ class tmdbSearch:
     
     def info(self, guess):
         movieinfo = {}
-        if not 'tmdbid' in guess:
+        #if not 'tmdbid' in guess:
+        if 1 == 1:
             tmdbid = None
             for guess in reversed(guess['titles']):
             # iterate reversed because year-based entries are at the bottom of the list, but yield better results.
@@ -401,6 +402,9 @@ class tmdbSearch:
                     #if foundname.lower() == origname.lower():
                     movieinfo = movie
                     tmdbid = movieinfo["id"]
+                    break;
+                
+                if tmdbid is not None:
                     break;
         else:
             movieinfo["title"] = guess['title']

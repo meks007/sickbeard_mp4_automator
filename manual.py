@@ -94,6 +94,16 @@ def tvdbInfo(guessData, tvdbid=None):
         log.error("Unable to match against TVDB.")
         return False
 
+def g_guessMeta(inputfile):
+    data = processor.getFfprobeData(inputfile)
+    try:
+        title = data["format"]["tags"]["title"]
+        log.debug("Found title %s in file metadata" % title)
+    except:
+        title = None
+        log.debug("No metadata found found in file")
+    return title
+
 def g_guessNfo(inputfile):
     if settings.meks_nfosearch:
         log.debug("Tagging: Nfo")
@@ -117,34 +127,56 @@ def g_guessNfo(inputfile):
     return None
 
 def g_guessIt(fileName):
-    guess = {}
-    guess['titles'] = []
+    guesses = {}
+    guesses['titles'] = []
     log.debug("Tagging: GuessIt")
-    guessData = guessit.guess_file_info(fileName)
-    for key in ['title', 'type', 'season', 'episodeNumber', 'year']:
-        if key in guessData:
-            guess[key] = guessData[key]
-    if 'series' in guessData:
-        guess['title'] = guessData['series']
-    if 'title' in guess:
-        log.debug("Trying to calculate alternative GuessIt titles")
-        # init list and add default title as element
-        guess['titles'].append([guess['title'], guess['year'] if 'year' in guess else None])
-        
-        parts = guess['title'].split(' ')
-        # search for year in title if guessit didn't find it.
-        for part in parts:
-            if part.isdecimal():
-                log.debug("A decimal was found in title = %s" % part)
-                if len(part) == 4:
-                    log.debug("This could be a year, splitting year from title and adding alternative title")
-                    parts.remove(part)
-                    finaltitle = ' '.join(parts)
-                    guess['titles'].append([finaltitle, part])
-                    log.debug("Alternative title will be %s from year %s" % (finaltitle, part))
-                    break
-    return guess
+    
+    paths = [os.path.split(fileName)[0]+".mp4", fileName]
+    meta = g_guessMeta(fileName)
+    if meta is not None:
+        meta = meta + ".mp4"
+        paths.append(meta)
+    
+    for fileName in paths: 
+        fileName = fileName.replace('-', ' ')
+        guess = guesses["path_" + fileName] = {}
+        guessData = guessit.guess_file_info(fileName)
+        for key in ['title', 'type', 'season', 'episodeNumber', 'year']:
+            if key in guessData:
+                guess[key] = guessData[key]
+        if 'series' in guessData:
+            guess['title'] = guessData['series']
+        if 'title' in guess:
+            log.debug("Trying to calculate alternative GuessIt titles")
+            # init list and add default title as element
+            guesses['titles'].append([guess['title'], guess['year'] if 'year' in guess else None])
+            
+            parts = guess['title'].split(' ')
+            # search for year in title if guessit didn't find it.
+            for part in parts:
+                if part.isdecimal():
+                    if len(part) == 4:
+                        log.debug("A decimal was found in title = %s" % part)
+                        log.debug("This could be a year, splitting year from title and adding alternative title")
+                        parts.remove(part)
+                        finaltitle = ' '.join(parts)
+                        guesses['titles'].append([finaltitle, part])
+                        log.debug("Alternative title will be %s from year %s" % (finaltitle, part))
+                        break
+    return guesses
 
+def getGuessInfo(guess):
+    info = None
+    if guess['type'] == 'movie':
+        log.debug("Guessed movie = %s" % guess['title'])
+        log.debug("Determined the following possible movie queries:")
+        log.debug(guess['titles'])
+        info = searcher.info(guess)
+    elif guess['type'] == 'episode':
+        log.debug("Guessed TV show = %s S%2dE%2d" % (guess['title'], guess['season'], guess['episodeNumber']))
+        info = tvdbInfo(guess)
+    return info
+    
 def guessInfo(fileName, tagdata=None):
     if not settings.fullpathguess:
         fileName = os.path.basename(fileName)
@@ -178,19 +210,22 @@ def guessInfo(fileName, tagdata=None):
            guess = searcher.find(guess)
         elif providsearch == 2:
            guess = searcher.load(provid, guess)
-           
+       
     log.debug("Guessed data: %s" % guess)
     
     if guess is not None:
-        if guess['type'] == 'movie':
-            log.debug("Guessed movie = %s" % guess['title'])
-            log.debug("Determined the following possible movie queries:")
-            log.debug(guess['titles'])
-            info = searcher.info(guess)
-        elif guess['type'] == 'episode':
-            log.debug("Guessed TV show = %s S%2dE%2d" % (guess['title'], guess['season'], guess['episodeNumber']))
-            info = tvdbInfo(guess)
-    
+        if 'type' not in guess:
+            for current_guess in guess:
+                if current_guess[:5] == 'path_':
+                    process_guess = guess[current_guess]
+                    process_guess['titles'] = guess['titles']
+                    info = getGuessInfo(process_guess)
+                    if info is not None:
+                        break
+                    else:
+                        log.debug("No data found for this query")
+        else:
+            info = getGuessInfo(guess)
     if info is None:
         log.debug("Unable to guess data. Type or ID invalid?")
     
@@ -241,6 +276,10 @@ def getTagData(filename, args=None):
     if settings.tagfile:
         log.info(">>> Tagging file ...")
         
+        lang = processor.getPrimaryLanguage(filename)
+        searcher.language = lang[0]
+        log.debug("Auto-selected tagging language %s based on first audio stream" % lang[1])
+        
         # Gather tagdata
         if args is not None:
             log.debug("Tagging: Args")
@@ -270,15 +309,15 @@ def getTagData(filename, args=None):
                 try:
                     if tagdata[0] is 1:
                         imdbid = tagdata[1]
-                        tagmp4 = tmdb_mp4(imdbid, settings=settings)
+                        tagmp4 = tmdb_mp4(imdbid, settings=settings, language=lang[0])
                     elif tagdata[0] is 2:
                         tmdbid = tagdata[1]
-                        tagmp4 = tmdb_mp4(tmdbid, True, settings=settings)
+                        tagmp4 = tmdb_mp4(tmdbid, True, settings=settings, language=lang[0])
                     elif tagdata[0] is 3:
                         tvdbid = int(tagdata[1])
                         season = int(tagdata[2])
                         episode = int(tagdata[3])
-                        tagmp4 = Tvdb_mp4(tvdbid, season, episode, settings=settings)
+                        tagmp4 = Tvdb_mp4(tvdbid, season, episode, settings=settings, language=lang[0])
                 except Exception as e:
                     log.exception(e)
                     tagmp4 = None

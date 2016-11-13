@@ -51,7 +51,7 @@ h264 QSV changes
 - The same h264 values for quality, maxrate and preset apply for h264qsv.
 - quality (normally ffmpeg -crf) turns into -q IF `meks-qsv-lookahead = 0`
 - quality is omitted if `meks-qsv-lookahead = 1..31` as they are different rate methods and can't be used together.
-- `use-qsv-decoder-with-encoder = False` will force the input decoder to be h264_qsv regardless of how it's actually encoded.
+- `use-qsv-decoder-with-encoder = False` will force the input decoder to be h264_qsv if the input codec is h264, in other words if True and video-codec = h264qsv then both decode and encode will be handled by QSV.
 
 Recursive mass-processing
 --------------
@@ -113,10 +113,17 @@ Advanced file tagging
 --------------
 - .nfo support added via `meks-nfosearch = True|False`. Enable to include a nfo file if it exists, search for an IMDB link in it and use that for tagging.
 - nfo files will always be searched in the same path as the inputfile. Paths can be extended using `meks-nfopaths = path|path` (eg `..` for parent dir)
-- Only e first nfo file with a valid IMDB link will be used for tagging. Only the first IMDB link in that file will be used. Any subsequent nfo files or multiple links within the same file are disregarded.
+- Only the first nfo file with a valid IMDB link will be used for tagging. Only the first IMDB link in that file will be used. Any subsequent nfo files or multiple links within the same file are disregarded.
+- Metadata support added via ffprobe -show_format metadata information.
 - Options for `-imdb` and `-tmdb` as well as any IMDB and/or TMDB related tagging attempts can be fully applied to either TMDB or TVDB data, depending on the class that is being returned from TMDB. So for example if you specified a TV show via `-tmdb 47110815` then that lookup would yield a "series" answer from TMDB and that request would be proxied to a TVDB title search. The same is valid for: TV show via -imdb, Movie via -imdb.
-- Tagging order is: manual.py arguments > nfo > GuessIt > no tag
+- Tagging order is: manual.py arguments > nfo > Metadata > GuessIt > no tag
 - The ID3v2 version can be specified using `meks-id3v2vers = <int>` (default: 3, for compatibility with Windows)
+- Option to rename a file based on tagging information. Specify `meks-tag-rename = True|False` (default: False) to enable renaming of tagged files using 2 basic renaming schemes:
+  * Movie: Movie.has.a.long.title.2016.English.mp4 [(%TITLE%).(%YEAR%).(%LANG%).(%EXT%)]
+  * TV: TV.Show.S01E01.Has.a.title.2016.English.mp4 [(%SHOW%).S(%S%)E(%E%).(%TITLE%).(%LANG%).(%EXT%)]
+- Option for dynamic tagging based on audio stream language using `meks-tag-language-auto = True|False` (default: False)
+  * If the FIRST audio stream of an input file has a language identifier set, then that language will be used for loading and writing metadata information after transcode.
+  * If no or an invalid identifier was found then the language configured using `tag-language` will be used as a fallback.
 
 Misc changes
 --------------
