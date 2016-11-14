@@ -13,6 +13,36 @@ A lot of what I think is useful FOR MY NEEDS is implemented. The following is an
 
 That being said here goes the changes so far:
 
+Configuration directives:
+--------------
+* Encoding:
+  * `meks-metadata = <string>´ - (String) Allows to specify ffmpeg metadata information that should be included during transcode.
+  * `meks-same-vcodec-copy = False´ - (True|False) Allow copying of a video stream if input and output codec is the same, check *Finer grained conrol of codec processing*
+  * `meks-same-acodec-copy = False´ - (True|False) Same as for video, but for audio streams, check *Finer grained control of codec processing*
+  * `meks-aac-adtstoasc = False´ - (True|False) Convert AAC ADTS streams to ASC, even if the stream is set to be copied.
+  * `meks-transcode-ignore-names = sample,trailer´ - (List of file name parts, seperated by ,) File names to ignore during *Recursive mass-processing*
+  * `meks-transcode-ignore-size = 50000000´ - (Float) File sizes in bytes to ignore during *Recursive mass-processing*
+* Encoding / H.264 - see *h264 Preset and Quality*
+  * `meks-video-quality = 23´ - (Integer) Enable quality-based transcoding
+  * `meks-h264-preset = fast´ - (String) Specify the H.264 encoding preset
+* Encoding / H.264 / QSV - see *h264 QSV changes* 
+  * `meks-qsv-lookahead = 0´ - (Integer) Enable the Look Ahead rate control method using the specified value
+* Staging:
+  * `meks-staging = True´ - (True|False) Enables staged transcoding, check *Staging* below for more information
+  * `meks-staging-extension = part´ - (String) Extension to add to files during transcoding-stage
+  * `meks-walk-ignore = ignore.part,ignore.skip,recode.ignore,recode.skip´ - (List of file names, seperated by ,) Allows to specify ignore-files, check *Recursive mass-processing* below.
+* Tagging:
+  * `meks-nfosearch = True´ - (True|False) Enable parsing of nfo files to search for a IMDB ID
+  * `meks-nfopaths = ..|../..´ (List of paths, seperated by |) - Paths to search for nfo files
+  * `meks-id3v2vers = 3´ - (Integer) Specify the ID3v2 version that should be used for tagging
+  * `meks-tag-rename = True´ - (True|False) Enable automatic renaming of the output file based on tagged data
+  * `meks-tag-language-auto = True´ (True|False) - Enable to automatically identify the language for tagging based on audio streams
+* Misc:
+  * `move_to = True`- (True|False) This was changed to boolean. Specify if you want to move or copy a file after processing, see *Copy-To and Move-To by file type*
+
+Detailed list of changes:
+--------------
+
 Staging
 --------------
 Convert an input-file to a part-file and only transition to mp4 just before replication (Copy-To/Move-To)
@@ -119,10 +149,10 @@ Advanced file tagging
 - Tagging order is: manual.py arguments > nfo > Metadata > GuessIt > no tag
 - The ID3v2 version can be specified using `meks-id3v2vers = <int>` (default: 3, for compatibility with Windows)
 - Option to rename a file based on tagging information. Specify `meks-tag-rename = True|False` (default: False) to enable renaming of tagged files using 2 basic renaming schemes:
-  * Movie: %(title)s (%(year)s) %(lang)s.%(ext)s
+  * Movie: `%(title)s (%(year)s) %(lang)s.%(ext)s`
   * e.g.: Movie.Name.(2014).English.mp4
 - Movie naming scheme: 
-  * TV: %(show)s S%(season)sE%(episode)s %(title)s %(year)s %(lang)s %(format)s %(videoCodec)s%(sep)s%(releaseGroup)s.%(ext)s
+  * TV: `%(show)s S%(season)sE%(episode)s %(title)s %(year)s %(lang)s %(format)s %(videoCodec)s%(sep)s%(releaseGroup)s.%(ext)s`
   * e.g.: Series.Name.S02E18.Episode.Title.2012.English.HDTV.h264-FLEET.mp4
 - Option for dynamic tagging based on audio stream language using `meks-tag-language-auto = True|False` (default: False)
   * If the FIRST audio stream of an input file has a language identifier set, then that language will be used for loading and writing metadata information after transcode.
