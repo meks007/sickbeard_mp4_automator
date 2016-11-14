@@ -21,7 +21,7 @@ from mkvtomp4 import MkvtoMp4
 from readSettings import settingsProvider
 
 class tmdb_mp4:
-    def __init__(self, provid, tmdbid=False, original=None, language=None, logger=None, settings=None):
+    def __init__(self, provid, tmdbid=False, original=None, language=None, logger=None, settings=None, guessData=None):
         if logger:
             self.log = logger
         else:
@@ -34,6 +34,8 @@ class tmdb_mp4:
 
         if language is None:
             language = self.settings.taglanguage
+
+        self.guessData = guessData
 
         if tmdbid is False and provid.startswith('tt') is not True:
             provid = 'tt' + provid
@@ -358,63 +360,47 @@ class tmdbSearch:
         if len(find.movie_results):
             movie = find.movie_results[0]
             return self.guess(info=movie, what="movie", guess=guess)
-            #guess['type'] = 'movie'
-            #guess['title'] = movie['title']
-            #guess['release_date'] = movie['release_date']
-            #guess['tmdbid'] = movie['id']
-            #guess['vote_count'] = movie['vote_count']
-            #guess['year'] = movie['release_date'][:4]
-            #guess['titles'] = [guess['title'], guess['year']]
-            #return guess
         elif len(find.tv_results):
             tv = find.tv_results[0]
             return self.guess(info=tv, what="tv", guess=guess)
-            #guess['type'] = 'episode'
-            #guess['title'] = tv['name']
-            #guess['tmdbid'] = tv['id']
-            #guess['vote_count'] = tv['vote_count']
-            #guess['year'] = tv['first_air_date'][:4]
-            #guess['titles'] = [guess['title'], guess['year']]
-            #return guess
-            
         return None
     
     def info(self, guess):
         movieinfo = {}
         #if not 'tmdbid' in guess:
-        if 1 == 1:
-            tmdbid = None
-            for guess in reversed(guess['titles']):
-            # iterate reversed because year-based entries are at the bottom of the list, but yield better results.
-                title = guess[0]
-                year = guess[1]
+        #if 1 == 1:
+        tmdbid = None
+        for guess in reversed(guess['titles']):
+        # iterate reversed because year-based entries are at the bottom of the list, but yield better results.
+            title = guess[0]
+            year = guess[1]
+            
+            try:
+                movies = self.search(title, year)
+            except Exception as e:
+                raise(e)
+            
+            for movie in movies:
+                # Identify the first movie in the collection that matches exactly the movie title
+                #foundname = ''.join(e for e in movie["title"] if e.isalnum())
+                #origname = ''.join(e for e in title if e.isalnum())
                 
-                try:
-                    movies = self.search(title, year)
-                except Exception as e:
-                    raise(e)
-                
-                for movie in movies:
-                    # Identify the first movie in the collection that matches exactly the movie title
-                    #foundname = ''.join(e for e in movie["title"] if e.isalnum())
-                    #origname = ''.join(e for e in title if e.isalnum())
-                    
-                    #if foundname.lower() == origname.lower():
-                    movieinfo = movie
-                    tmdbid = movieinfo["id"]
-                    break;
-                
-                if tmdbid is not None:
-                    break;
-        else:
-            movieinfo["title"] = guess['title']
-            movieinfo["release_date"] = guess['release_date']
-            movieinfo["vote_count"] = guess['vote_count']
-            tmdbid = guess['tmdbid']
+                #if foundname.lower() == origname.lower():
+                movieinfo = movie
+                tmdbid = movieinfo["id"]
+                break;
+            
+            if tmdbid is not None:
+                break;
+        #else:
+        #    movieinfo["title"] = guess['title']
+        #    movieinfo["release_date"] = guess['release_date']
+        #    movieinfo["vote_count"] = guess['vote_count']
+        #    tmdbid = guess['tmdbid']
         
         if tmdbid:
             self.log.info("Matched movie as %s (TMDB ID:%s) %s" % (movieinfo["title"].encode(sys.stdout.encoding, errors='ignore'), tmdbid, movieinfo["release_date"]))
-            return 2, tmdbid
+            return {'type':2, 'provid':tmdbid}
         
         return None
 

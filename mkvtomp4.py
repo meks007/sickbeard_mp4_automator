@@ -7,7 +7,8 @@ import shutil
 import logging
 import locale
 import signal
-#import pycountry
+import unicodedata
+import string
 
 from subprocess import Popen, PIPE
 from random import randint
@@ -767,7 +768,8 @@ class MkvtoMp4:
         import guessit
         
         staging = False
-        l = []
+        l = {}
+        f = None
         
         if self.settings.meks_tagrename:
             if self.settings.meks_staging:
@@ -775,26 +777,40 @@ class MkvtoMp4:
             else:
                 o = outputfile
             
-            lang = self.getPrimaryLanguage(o)
-            if tmkey == 1 or tmkey == 2:
-                l = [tagmp4.title, tagmp4.date[:4], lang[1], self.settings.output_extension]
-                f = "%s (%s) %s.%s" % tuple(l)
-                g = guessit.guess_file_info(f)
-                f = ("%s %s %s.%s" % (g['title'], g['year'], lang[1], self.settings.output_extension)).replace(' ', '.')
-            elif tmkey == 3:
-                l = [tagmp4.show, tagmp4.airdate[:4], str(tagmp4.season).zfill(2), str(tagmp4.episode).zfill(2), tagmp4.title, lang[1], self.settings.output_extension]
-                f = "%s (%s) S%sE%s %s %s.%s" % tuple(l)
-                g = guessit.guess_file_info(f)
-                f = ("%s %s S%sE%s %s %s.%s" % (g['series'], g['year'], str(g['season']).zfill(2), str(g['episodeNumber']).zfill(2), g['title'], lang[1], self.settings.output_extension)).replace(' ', '.')
-            if len(l):
-                self.log.debug("Temporarily enabled staging due to tag rename operation")
-                staging = True
-                
-                od = os.path.split(o)[0]
-                finaloutput = os.path.join(od, f)
-                self.log.debug("Queued rename:")
-                self.log.debug("  Previous final output file: %s" % o)
-                self.log.debug("  New final output file: %s" % finaloutput)
+            lang = self.getPrimaryLanguage(outputfile)
+            l = {'title':tagmp4.title, 'lang':lang[1], 'ext':self.settings.output_extension, 'sep':''}
+            if tagmp4 is not None and tagmp4.guessData is not None:
+                for key in ['format','videoCodec','releaseGroup']:
+                    l.update({key:''})
+                    if key in tagmp4.guessData:
+                        l[key] = tagmp4.guessData[key]
+                        l['sep'] = '-'
+                if tmkey == 1 or tmkey == 2:
+                    l.update({'year':tagmp4.date[:4]})
+                    self.log.debug("Renaming movie using the following base data:")
+                    self.log.debug(l)
+                    f = "%(title)s (%(year)s) %(lang)s.%(ext)s" % l
+                elif tmkey == 3:
+                    l.update({'show':tagmp4.show, 'year':tagmp4.airdate[:4], 'season':str(tagmp4.season).zfill(2), 'episode':str(tagmp4.episode).zfill(2)})
+                    self.log.debug("Renaming TV show using the following base data:")
+                    self.log.debug(l)
+                    f = "%(show)s S%(season)sE%(episode)s %(title)s %(year)s %(lang)s %(format)s %(videoCodec)s%(sep)s%(releaseGroup)s.%(ext)s" % l
+                if len(f):
+                    f = f.replace(' ', '.')
+                    validFilenameChars = "-_.()[] %s%s" % (string.ascii_letters, string.digits)
+                    uf = unicodedata.normalize('NFKD', f).encode('ASCII', 'ignore')
+                    constructed_filename = ''.join(c for c in uf if c in validFilenameChars)
+                    
+                    od = os.path.split(o)[0]
+                    finaloutput = os.path.join(od, constructed_filename)
+                    self.log.debug("Queued rename:")
+                    self.log.debug("  Previous final output file: %s" % o)
+                    self.log.debug("  New final output file: %s" % finaloutput)
+                    
+                    self.log.debug("Temporarily enabled staging due to tag rename operation")
+                    staging = True
+            else:
+                self.log.debug("Tagging class is invalid or guessed data was not found, not renaming")
         return [staging, finaloutput]
         
     def cptoDestinations(self, cptypes):

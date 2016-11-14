@@ -21,7 +21,7 @@ from mkvtomp4 import MkvtoMp4
 from readSettings import settingsProvider
 
 class Tvdb_mp4:
-    def __init__(self, show, season, episode, original=None, language='en', logger=None, settings=None):
+    def __init__(self, show, season, episode, original=None, language='en', logger=None, settings=None, guessData = None):
         if logger:
             self.log = logger
         else:
@@ -31,6 +31,8 @@ class Tvdb_mp4:
             self.settings = settings
         else:
             self.settings = settingsProvider().defaultSettings
+
+        self.guessData = guessData
 
         for i in range(3):
             try:

@@ -119,8 +119,11 @@ Advanced file tagging
 - Tagging order is: manual.py arguments > nfo > Metadata > GuessIt > no tag
 - The ID3v2 version can be specified using `meks-id3v2vers = <int>` (default: 3, for compatibility with Windows)
 - Option to rename a file based on tagging information. Specify `meks-tag-rename = True|False` (default: False) to enable renaming of tagged files using 2 basic renaming schemes:
-  * Movie: Movie.has.a.long.title.2016.English.mp4 [(%TITLE%).(%YEAR%).(%LANG%).(%EXT%)]
-  * TV: TV.Show.S01E01.Has.a.title.2016.English.mp4 [(%SHOW%).S(%S%)E(%E%).(%TITLE%).(%LANG%).(%EXT%)]
+  * Movie: %(title)s (%(year)s) %(lang)s.%(ext)s
+  * e.g.: Movie.Name.(2014).English.mp4
+- Movie naming scheme: 
+  * TV: %(show)s S%(season)sE%(episode)s %(title)s %(year)s %(lang)s %(format)s %(videoCodec)s%(sep)s%(releaseGroup)s.%(ext)s
+  * e.g.: Series.Name.S02E18.Episode.Title.2012.English.HDTV.h264-FLEET.mp4
 - Option for dynamic tagging based on audio stream language using `meks-tag-language-auto = True|False` (default: False)
   * If the FIRST audio stream of an input file has a language identifier set, then that language will be used for loading and writing metadata information after transcode.
   * If no or an invalid identifier was found then the language configured using `tag-language` will be used as a fallback.
