@@ -367,39 +367,40 @@ class tmdbSearch:
     
     def info(self, guess):
         movieinfo = {}
-        #if not 'tmdbid' in guess:
+        if not 'tmdbid' in guess:
         #if 1 == 1:
-        tmdbid = None
-        for guess in reversed(guess['titles']):
-        # iterate reversed because year-based entries are at the bottom of the list, but yield better results.
-            title = guess[0]
-            year = guess[1]
-            
-            try:
-                movies = self.search(title, year)
-            except Exception as e:
-                raise(e)
-            
-            for movie in movies:
-                # Identify the first movie in the collection that matches exactly the movie title
-                #foundname = ''.join(e for e in movie["title"] if e.isalnum())
-                #origname = ''.join(e for e in title if e.isalnum())
+            tmdbid = None
+            for guess in reversed(guess['titles']):
+            # iterate reversed because year-based entries are at the bottom of the list, but yield better results.
+                title = guess[0]
+                year = guess[1]
                 
-                #if foundname.lower() == origname.lower():
-                movieinfo = movie
-                tmdbid = movieinfo["id"]
-                break;
-            
-            if tmdbid is not None:
-                break;
-        #else:
-        #    movieinfo["title"] = guess['title']
-        #    movieinfo["release_date"] = guess['release_date']
-        #    movieinfo["vote_count"] = guess['vote_count']
-        #    tmdbid = guess['tmdbid']
+                try:
+                    movies = self.search(title, year)
+                except Exception as e:
+                    raise(e)
+                
+                for movie in movies:
+                    # Identify the first movie in the collection that matches exactly the movie title
+                    #foundname = ''.join(e for e in movie["title"] if e.isalnum())
+                    #origname = ''.join(e for e in title if e.isalnum())
+                    
+                    #if foundname.lower() == origname.lower():
+                    movieinfo = movie
+                    tmdbid = movieinfo["id"]
+                    break;
+                
+                if tmdbid is not None:
+                    break;
+        else:
+            tmdbid = guess['tmdbid']
+            guess = self.load(tmdbid, guess)
+            movieinfo["title"] = guess['title']
+            movieinfo["release_date"] = guess['release_date']
+            movieinfo["vote_count"] = guess['vote_count']
         
         if tmdbid:
-            self.log.info("Matched movie as %s (TMDB ID:%s) %s" % (movieinfo["title"].encode(sys.stdout.encoding, errors='ignore'), tmdbid, movieinfo["release_date"]))
+            self.log.info("Matched movie as %s (TMDB ID:%s) %s" % (movieinfo["title"], tmdbid, movieinfo["release_date"]))
             return {'type':2, 'provid':tmdbid}
         
         return None

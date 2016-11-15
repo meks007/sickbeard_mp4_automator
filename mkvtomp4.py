@@ -767,7 +767,7 @@ class MkvtoMp4:
     def tagRename(self, outputfile, finaloutput, tmkey, tagmp4):
         import guessit
         
-        staging = False
+        staging = self.settings.meks_staging
         l = {}
         f = None
         
@@ -778,8 +778,8 @@ class MkvtoMp4:
                 o = outputfile
             
             lang = self.getPrimaryLanguage(outputfile)
-            l = {'title':tagmp4.title, 'lang':lang[1], 'ext':self.settings.output_extension, 'sep':''}
             if tagmp4 is not None and tagmp4.guessData is not None:
+                l = {'title':tagmp4.title, 'lang':lang[1], 'ext':self.settings.output_extension, 'sep':''}
                 for key in ['format','videoCodec','releaseGroup']:
                     l.update({key:''})
                     if key in tagmp4.guessData:

@@ -20,13 +20,14 @@ Configuration directives:
   * `meks-same-vcodec-copy = False` - (True|False) - Allow copying of a video stream if input and output codec is the same, check *Finer grained conrol of codec processing*
   * `meks-same-acodec-copy = False` - (True|False) - Same as for video, but for audio streams, check *Finer grained control of codec processing*
   * `meks-aac-adtstoasc = False` - (True|False) - Convert AAC ADTS streams to ASC, even if the stream is set to be copied.
-  * `meks-transcode-ignore-names = sample,trailer` - (List of file name parts, seperated by ,) - File names to ignore during *Recursive mass-processing*
-  * `meks-transcode-ignore-size = 50000000` - (Float) - File sizes in bytes to ignore during *Recursive mass-processing*
 * Encoding / H.264 - see *h264 Preset and Quality*
   * `meks-video-quality = 23` - (Integer) - Enable quality-based transcoding
   * `meks-h264-preset = fast` - (String) - Specify the H.264 encoding preset
 * Encoding / H.264 / QSV - see *h264 QSV changes* 
   * `meks-qsv-lookahead = 0` - (Integer) - Enable the Look Ahead rate control method using the specified value
+* Batch processing - see *Recursive mass-processing*
+  * `meks-transcode-ignore-names = sample,trailer` - (List of file name parts, seperated by ,) - File names to ignore during *Recursive mass-processing*
+  * `meks-transcode-ignore-size = 50000000` - (Float) - File sizes in bytes to ignore during *Recursive mass-processing*
 * Staging:
   * `meks-staging = True` - (True|False) - Enables staged transcoding, check *Staging* below for more information
   * `meks-staging-extension = part` - (String) - Extension to add to files during transcoding-stage
@@ -50,131 +51,188 @@ This allows to exclude files from 3rd party apps while they're being converted.
 The part file will be transitioned after all write operations are finished (that is after conversion, tagging, relocate atoms, ...).
 
 Staging can be defined in autoProcess.ini using:
-- `meks-staging = True|False` (default: True; make use of the staging logic or revert to traditional processing)
-- `meks-staging-extension = part` (default: part; extension to append during staging)
+
+* `meks-staging = True|False` (default: True; make use of the staging logic or revert to traditional processing)
+* `meks-staging-extension = part` (default: part; extension to append during staging)
 
 Staging workflow:
-- Input file 
-- Conversion => Outputfile + ".part" 
-- Write operations => Tagging on part-File => Atom operations (MOOV) on part-File 
-- Transition => Rename to final mp4 file
-- Replication => Copy-To => Move-To
+
+* Input file 
+* Conversion => Outputfile + ".part" 
+* Write operations => Tagging on part-File => Atom operations (MOOV) on part-File 
+* Transition => Rename to final mp4 file
+* Replication => Copy-To => Move-To
 
 Finer grained conrol of codec processing
 --------------
-- Using `meks_same-vcodec-copy = True|False` same-video-codec copy operations can be disabled (default: True, enabled.). If disabled a video transcode is forced even if the input file already has one of the desired `video-codec`s, otherwise the video stream is copied to the output file, ignoring any quality settings specified.
-- Similarily, using `meks_same-acodec-copy = True|False` same-audio-codec copy operation can be disabled (default: True, enabled.)
-- Specify if ADTS should be converted to ASC using `meks-aac-adtstoasc = True|False` (default: True). If input audio codec is AAC and same-acodec-copy is True, then convert an ADTS stream to ASC using ffmpeg bitstream filters.
+Using `meks_same-vcodec-copy = True|False` same-video-codec copy operations can be disabled (default: True, enabled.).  
+If disabled a video transcode is forced even if the input file already has one of the desired `video-codec`s, otherwise the video stream is copied to the output file, ignoring any quality settings specified.  
+
+Similarily, using `meks_same-acodec-copy = True|False` same-audio-codec copy operation can be disabled (default: True, enabled.)  
+
+Specify if ADTS should be converted to ASC using `meks-aac-adtstoasc = True|False` (default: True). If input audio codec is AAC and same-acodec-copy is True, then convert an ADTS stream to ASC using ffmpeg bitstream filters.
 
 h264 Preset and Quality
 --------------
-There are 2 new options in autoProcess.ini available for specifying preset and quality during conversions:
-- `meks-video-quality = 20`
-- `meks-h264-preset = medium`
+There are 2 new options in autoProcess.ini available for specifying preset and quality during conversions:  
 
-Note: If video-bitrate was specified then this turns into ffmpeg -maxrate. See https://trac.ffmpeg.org/wiki/Encode/H.264
+* `meks-video-quality = 20`
+* `meks-h264-preset = medium`
+
+Note: If video-bitrate was specified then this turns into ffmpeg -maxrate. See [https://trac.ffmpeg.org/wiki/Encode/H.264](https://trac.ffmpeg.org/wiki/Encode/H.264)
 
 h264 QSV changes
 --------------
-- Specify `video-codec = h264qsv` to enable QSV encoding.
-- QSV look_ahead is now customizable with `meks-qsv-lookahead = (int)` (default: 0).
-- The same h264 values for quality, maxrate and preset apply for h264qsv.
-- quality (normally ffmpeg -crf) turns into -q IF `meks-qsv-lookahead = 0`
-- quality is omitted if `meks-qsv-lookahead = 1..31` as they are different rate methods and can't be used together.
+* Specify `video-codec = h264qsv` to enable QSV encoding.
+* The same h264 values for quality, maxrate and preset apply for h264qsv.
+* QSV look_ahead is now customizable with `meks-qsv-lookahead = (int)` (default: 0).
+* quality (normally ffmpeg -crf) turns into -q IF `meks-qsv-lookahead = 0`
+* quality is omitted if `meks-qsv-lookahead = 1..31` as they are different rate methods and can't be used together.
 - `use-qsv-decoder-with-encoder = False` will force the input decoder to be h264_qsv if the input codec is h264, in other words if True and video-codec = h264qsv then both decode and encode will be handled by QSV.
 
 Recursive mass-processing
 --------------
-The manual processor (manual.py) has an option to specify an input folder rather than a file (nothing new).
-However the processor walks the complete hierarchy below of this folder.
+The manual processor (manual.py) has an option to specify an input folder rather than a file (nothing new). However the processor walks the *complete* hierarchy below this folder.
 
 If you are like me and have all sorts of stuff in your incoming/download folder and don't want to have the converter attempt to process eg ISO images or EXE files, then a full hierarchy walk is pointless.
 
 Therefore autoProcess.ini now supports specifying:
-- `meks-walk-ignore = <ignore-files>` (eg: recode.ignore,ignore.part,ignore.skip)
+
+* `meks-walk-ignore = <ignore-files>` 
+* eg: recode.ignore,ignore.part,ignore.skip
+
 During hierarchy walk the processor automatically skips a folder and all of it's subfolders and files if a file was found that matches <ignore-files>.
 
-Example, say you have the following situation:
-- `meks-walk-ignore = ignore.part,recode.skip`
-- Hierarchy as follows:
-`Download
-Download/Apps - ['ignore.part']
-Download/Videos
-Download/ISO - ['recode.skip']`
-- A hierarchy walk would then skip all files and subfolders in Apps/* and ISO/* and only allow processing of files directly in Download as well as Videos/*
+Example, say you have the following situation:  
 
-Furthermore in mass processing mode, one can ignore files based on name and size restrictions:
+* `meks-walk-ignore = ignore.part,recode.skip`
+* Hierarchy as follows
+> Download  
+  Download/Apps - ['ignore.part']  
+  Download/Videos  
+  Download/ISO - ['recode.skip']
+
+A hierarchy walk would then skip all files and subfolders in Apps/* and ISO/* and only allow processing of files directly in Download as well as Videos/*
+
+Furthermore in mass processing mode, one can ignore files based on name and size restrictions:  
+
 - `meks-transcode-ignore-names = sample,example` (default: sample)
 - `meks-transcode-ignore-size = 40000000` (in Bytes, default: 0)
+
 Note that these restrictions do not apply if a file is targeted directly. They are only applied during hierarchy walk.
 
 Copy-To and Move-To by file type
 --------------
-Suppose you use this converter for converting and tagging movies as well as TV shows. Further down the chain, after conversion is finished and the file is ready for post processing by SR/CP, it might be useful to separate the output files in folders for movies and TV shows. Originally this was not possible as you could either copy all files or move all files to one or multiple folders, but you would end up with all files in the same folder.
-You could (and still can) specify "multi-purpose" folders using `copy-to = /path/to/folder1|/path/to/folder2|/path/to/folderX`
+Suppose you use this converter for converting and tagging movies as well as TV shows. Further down the chain, after conversion is finished and the file is ready for post processing by SR/CP, it might be useful to separate the output files in folders for movies and TV shows. Originally this was not possible as you could either copy all files or move all files to one or multiple folders, but you would end up with all files in the same folder.  
 
-This was changed so that Copy-to now allows the following syntax for folders by *type*:
-`copy-to = movie:/path/to/moviefolder|tv:/path/to/tvfolder|/path/to/generic/folder`
-This would result in all files which were tagged as movies to be copied to /path/to/moviefolder and /path/to/generic/folder
-Consequently all TV shows would be copied to /path/to/tvfolder and /path/to/generic/folder
-If a movie or TV show could not be tagged, then all type-folders will be ignored and only the "multi-purpose" generic folders are taken into account. If no generics are defined then Copy-to would behave as if it wasn't set at all.
+You could (and still can) specify "multi-purpose" folders using   
 
-Furthermore I saw no need in being able to specify Move-to. The Move-to option originally behaved the same as Copy-to but would delete (read: move away) the file from the original output location during replication, whereas Copy-to would only create copies and leave the file in the output original.
-So since both options are roughly the same, I made `move-to = True|False` instead of String. By specifying `move-to = True` all Copy-to operations transform into Move-to. So if you specified a type-folder for movies and enabled move-to then all your converted and tagged movie files would first be copied to the movie type folder and deleted after copy was successful.
+* `copy-to = /path/to/folder1|/path/to/folder2|/path/to/folderX`
+
+However in favor of having tag-based destinations, this was changed so that Copy-to now allows the following syntax for folders by *type*:  
+
+* `copy-to = movie:/path/to/moviefolder|tv:/path/to/tvfolder|/path/to/generic/folder`  
+
+Following the above example, this would result in all files which were tagged as movies to be copied to /path/to/moviefolder and /path/to/generic/folder and all TV shows to /path/to/tvfolder and /path/to/generic/folder.  
+
+If a movie or TV show can not be tagged, then all type-folders will be ignored and only the "multi-purpose" generic folders are taken into account. If no generics are defined then Copy-to would behave as if it wasn't set at all.
+
+Furthermore I saw no need in being able to specify Move-to. The Move-to option originally behaved the same as Copy-to but would delete (read: move away) the file from the original output location during replication, whereas Copy-to would only create copies and leave the file in the original output location.
+So since both options are roughly the same,  
+
+* I made `move-to = True|False` instead of String.   
+
+By specifying setting it to `True` all Copy-to operations transform into Move-to. So if you specified a type-folder for movies and enabled move-to then all your converted and tagged movie files would first be copied to the movie type folder and deleted after copy was successful.
 
 Post processing scripts extended:
 --------------
-- Fire CouchPotato Renamer using API (only fire if file was tagged as movie)
-- Fire Sickrage PostProcessor using API (only fire if file was tagged as TV show)
-- Dump ffprobe data to log after conversion (for keeping a log of conversions)
-- All scripts were enabled to properly utilize logging facilities and no longer send to stdout but rather send output using loggers.
+* Fire CouchPotato Renamer using API (only fire if file was tagged as movie)
+* Fire Sickrage PostProcessor using API (only fire if file was tagged as TV show)
+* Dump ffprobe data to log after conversion (for keeping a log of conversions)  
+
+All scripts were enabled to properly utilize logging facilities and no longer send to stdout but rather send output using loggers.
 
 Editing of Metadata
 --------------
-Using `meks-metadata = <metadata-options>` in autoProcess.ini ffmpeg can be called using -metadata to edit/change metadata during conversion.
+`meks-metadata = <metadata-options>` can be used to call ffmpeg with the `-metadata` argument to edit/change metadata during conversion.
 
 Change of TMDB API
 --------------
-This fork uses Celia Okley's [tmdbsimple](https://github.com/celiao/tmdbsimple), a completely different TMDB API which enables greater flexibility in searches (e.g. include year in search)
+This fork uses Celia Okley's [tmdbsimple](https://github.com/celiao/tmdbsimple), a completely different TMDB API which enables greater flexibility in searches (e.g. include year in search).  
+
 This is a drop-in replacement on the extension side as all methods from tmdb_mp4.py are still the same. However if you accessed the original TMDB API then those things would need to be adapted.
 Due to this switch the whole GuessIt parsing features have improved too.
 
 Advanced file tagging
 --------------
-- .nfo support added via `meks-nfosearch = True|False`. Enable to include a nfo file if it exists, search for an IMDB link in it and use that for tagging.
-- nfo files will always be searched in the same path as the inputfile. Paths can be extended using `meks-nfopaths = path|path` (eg `..` for parent dir)
-- Only the first nfo file with a valid IMDB link will be used for tagging. Only the first IMDB link in that file will be used. Any subsequent nfo files or multiple links within the same file are disregarded.
-- Metadata support added via ffprobe -show_format metadata information.
-- Options for `-imdb` and `-tmdb` as well as any IMDB and/or TMDB related tagging attempts can be fully applied to either TMDB or TVDB data, depending on the class that is being returned from TMDB. So for example if you specified a TV show via `-tmdb 47110815` then that lookup would yield a "series" answer from TMDB and that request would be proxied to a TVDB title search. The same is valid for: TV show via -imdb, Movie via -imdb.
-- Tagging order is: manual.py arguments > nfo > Metadata > GuessIt > no tag
-- The ID3v2 version can be specified using `meks-id3v2vers = <int>` (default: 3, for compatibility with Windows)
-- Option to rename a file based on tagging information. Specify `meks-tag-rename = True|False` (default: False) to enable renaming of tagged files using 2 basic renaming schemes:
-  * Movie: `%(title)s (%(year)s) %(lang)s.%(ext)s`
-  * e.g.: Movie.Name.(2014).English.mp4
-- Movie naming scheme: 
-  * TV: `%(show)s S%(season)sE%(episode)s %(title)s %(year)s %(lang)s %(format)s %(videoCodec)s%(sep)s%(releaseGroup)s.%(ext)s`
-  * e.g.: Series.Name.S02E18.Episode.Title.2012.English.HDTV.h264-FLEET.mp4
-- Option for dynamic tagging based on audio stream language using `meks-tag-language-auto = True|False` (default: False)
+**1. Tagging via command line arguments**  
+Options for `-imdb` and `-tmdb` as well as any IMDB and/or TMDB related tagging attempts can be fully applied to either TMDB or TVDB data, depending on the class that is being returned from TMDB.  
+
+So for example if you specified a TV show via `-tmdb 47110815` then that lookup would yield a "series" answer from TMDB and that request would be proxied to a TVDB title search. The same is valid for: TV show via -imdb, Movie via -imdb.  
+
+In other words, you can specify `-imdb movie_or_tv`, `-tmdb movie_or_tv`, `-tvdb tv`. If you specified a TV show you can use all 3 options and end up using the TVDB results. This is helpful if using manual.py in batch processing mode. You can just let it handle the ID's itself instead of having to distinguish between movie or TV before launching manual.py.
+
+**2. Tagging via nfo file**  
+.nfo support was added via `meks-nfosearch = True|False`.  
+Set to True to include a nfo file if one exists, search for an IMDB link in it and use that for tagging.
+
+nfo files will *always* be searched in the same path as the inputfile. In addition, paths can be extended using `meks-nfopaths = path|path` (eg `..` for parent dir)
+
+*Only the first nfo file with a valid IMDB link only the first IMDB link in that file will be used for tagging. Any subsequent nfo files or multiple links within the same file are disregarded.*
+
+**3. Tagging via metadata**  
+If an input file is already tagged with a title tag, then that tag will be used to acquire furhter information from TMDB/TVDB. The input file is analyzed using `ffprobe -show_format`.
+
+**4. Tagging via GuessIt**  
+The python GuessIt library can be used to guess information based on the input filename. Upon parsing the file different search queries are directed towards TMDB in order to load further information.
+
+**5. No tags**  
+Well. Tough luck, but yes.
+
+**Tagging order is: (1) manual.py arguments > (2) nfo > (3) Metadata > (4) GuessIt > (5) no tag** ***  
+The tagging processes ends as soon as enough information is collected to reliably tag the file.
+
+**Option to rename a file based on tagging information**  
+
+Specify `meks-tag-rename = True|False` (default: False) to enable renaming of tagged files using 2 basic renaming schemes:  
+
+  * Movie: `%(title)s (%(year)s) %(lang)s.%(ext)s`  
+  e.g.: *Movie.Name.(2014).English.mp4*
+  * TV: `%(show)s S%(season)sE%(episode)s %(title)s%(year)s %(lang)s %(format)s %(videoCodec)s%(sep)s%(releaseGroup)s.%(ext)s`  
+  e.g.: *Series.Name.S02E18.Episode.Title.2012.English.HDTV.h264-FLEET.mp4*
+
+*PROPER tags are not applied during renaming at the moment!*
+
+**Options for tagging files**
+
+* The ID3v2 version can be specified using `meks-id3v2vers = <int>` (default: 3 (=ID3v2.3), for compatibility with Windows)
+* The tagging language can be dynamically determined based on input stream language. You can use `meks-tag-language-auto = True|False` (default: False) to specify whether the tagging language should be determined by the following:  
   * If the FIRST audio stream of an input file has a language identifier set, then that language will be used for loading and writing metadata information after transcode.
   * If no or an invalid identifier was found then the language configured using `tag-language` will be used as a fallback.
 
 Misc changes
 --------------
-- Threads setting removed as it is deprecated and completely removed on newer ffmpeg versions
-- Access to autoSettings.ini is unified:
-`from readSettings import settingsProvider`
-`settingsProvider().defaultSettings`
-This can be extended using multiple providers for multiple configurations (say: different configs for Movies and TV shows)
-eg: `settingsProvder().settingsMovies` or `settingsProvider().settingsTV`
-- Similarily, access to logging is unified, eg:
-`sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
-from _utils import LoggingAdapter
-log = LoggingAdapter.getLogger()
-anotherlog = LoggingAdapter.getLogger("testLogger")`
-- manual.py adapted to Python logging rather than print()
-- Media file validation unified to MkvtoMp4().validSource(), takes into account ffprobe information rather than just file extensions
-- If an input file was detected as bad then move it out of the way by renaming it to ".bad"
-- If `delete_original = False` then a rename operation automatically kicks in that appends ".recoded" to the input file. It's either delete or rename, leaving it untouched is no option.
+* Threads setting removed as it is deprecated and completely removed on newer ffmpeg versions
+
+* Access to autoSettings.ini is unified:  
+`from readSettings import settingsProvider`  
+`settingsProvider().defaultSettings`  
+This can be extended using multiple providers for multiple configurations (say: different configs for Movies and TV shows), e.g.:  
+`settingsProvider().settingsMovies`  
+`settingsProvider().settingsTV`
+* Similarily, access to logging is unified, eg:
+`sys.path.append(os.path.join(os.path.dirname(__file__), ".."))`  
+`from _utils import LoggingAdapter`  
+`log = LoggingAdapter.getLogger()`  
+`anotherlog = LoggingAdapter.getLogger("testLogger")`
+
+* Media file validation unified to `MkvtoMp4().validSource()`, takes into account ffprobe information rather than just file extensions
+
+* If an input file was detected as bad then move it out of the way by renaming it to ".bad"
+
+* If `delete_original = False` then a rename operation automatically kicks in that appends ".recoded" to the input file. It's either delete or rename, leaving it untouched is no option.
+
+* manual.py adapted to Python logging rather than print()
 
 Bugs/Caveats
 --------------
