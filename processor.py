@@ -70,8 +70,8 @@ class fileProcessor:
                         self.log.exception("There was an error tagging the file")
                 
                 # OPTIMIZE
-                if self.settings.relocate_moov:
-                    self.converter.QTFS(output['output'])
+                #if self.settings.relocate_moov:
+                #    self.converter.QTFS(output['output'])
                 
                 # REPLICATE
                 output['tag'] = tagmp4

@@ -530,6 +530,9 @@ class MkvtoMp4:
             'postopts': [],
         }
 
+        if self.settings.relocate_moov:
+            options['video']['movflags'] = 'faststart'
+
         # in h264, drop the constant bitrate and use the recommended quality settings.  ffmpeg default is 23 but our default is 20.
         if vcodec == "h264" or vcodec == "h264qsv":
             del options['video']['bitrate']

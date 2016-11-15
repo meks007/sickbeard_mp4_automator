@@ -247,7 +247,8 @@ class VideoCodec(BaseCodec):
         'pix_fmt': str,
         'map': int,
         'metadata': str,
-        'id3v2vers': int
+        'id3v2vers': int,
+        'movflags': str,
     }
 
     def _aspect_corrections(self, sw, sh, w, h, mode):
@@ -380,6 +381,8 @@ class VideoCodec(BaseCodec):
             optlist.extend(['-vb', str(safe['bitrate']) + 'k'])  # FIXED
         if 'id3v2vers' in safe:
             optlist.extend(['-id3v2_version', str(safe['id3v2vers'])])
+        if 'movflags' in safe:
+            optlist.extend(['-movflags', str(safe['movflags'])])
         if 'filter' in safe:
             if filters:
                 filters = '%s;%s' % (filters, str(safe['filter']))

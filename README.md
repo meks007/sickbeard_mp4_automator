@@ -13,7 +13,11 @@ A lot of what I think is useful FOR MY NEEDS is implemented. The following is an
 
 That being said here goes the changes so far:
 
-Configuration directives:
+Additioal libraries required
+--------------
+* `Levenhstein` - Run `pip install python-Levenshtein`. Needed for distance matching during tagging.
+
+Configuration directives
 --------------
 * Encoding:
   * `meks-metadata = <string>` - (String) - Allows to specify ffmpeg metadata information that should be included during transcode.
@@ -41,7 +45,7 @@ Configuration directives:
 * Misc:
   * `move_to = True`- (True|False) - This was changed to boolean. Specify if you want to move or copy a file after processing, see *Copy-To and Move-To by file type*
 
-Detailed list of changes:
+Detailed list of changes
 --------------
 
 Staging
@@ -180,16 +184,16 @@ nfo files will *always* be searched in the same path as the inputfile. In additi
 
 *Only the first nfo file with a valid IMDB link only the first IMDB link in that file will be used for tagging. Any subsequent nfo files or multiple links within the same file are disregarded.*
 
-**3. Tagging via metadata**  
-If an input file is already tagged with a title tag, then that tag will be used to acquire furhter information from TMDB/TVDB. The input file is analyzed using `ffprobe -show_format`.
-
-**4. Tagging via GuessIt**  
+**3. Tagging via GuessIt**  
 The python GuessIt library can be used to guess information based on the input filename. Upon parsing the file different search queries are directed towards TMDB in order to load further information.
+
+**4. Tagging via metadata**  
+If an input file is already tagged with a title tag, then that tag will be used to acquire furhter information from TMDB/TVDB. The input file is analyzed using `ffprobe -show_format`. Metadata has low priority as some files contain title tags of a release group or such. Honoring that too much for the sake of tagging would result in that are completely wrong.
 
 **5. No tags**  
 Well. Tough luck, but yes.
 
-**Tagging order is: (1) manual.py arguments > (2) nfo > (3) Metadata > (4) GuessIt > (5) no tag** ***  
+**Tagging order is: (1) manual.py arguments > (2) nfo > (3) GuessIt > (4) Metadata > (5) no tag** ***  
 The tagging processes ends as soon as enough information is collected to reliably tag the file.
 
 **Option to rename a file based on tagging information**  

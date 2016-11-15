@@ -8,9 +8,11 @@ import argparse
 import struct
 import guessit
 import re
+import string
+import unicodedata
 
 import logging
-from _utils import LoggingAdapter, executionLocker
+from _utils import *
 log = LoggingAdapter.getLogger("MANUAL", {})
 
 from readSettings import settingsProvider
@@ -132,13 +134,28 @@ def g_guessIt(fileName):
     log.debug("Tagging: GuessIt")
     
     realFileName = fileName
-    
-    paths = [fileName, os.path.split(fileName)[0]+".mp4"]
-    meta = g_guessMeta(fileName)
+
+    paths = [] 
+    meta = g_guessMeta(fileName)   
     if meta is not None:
         meta = meta + ".mp4"
         paths.append(meta)
+    paths.extend([fileName, os.path.split(fileName)[0]+".mp4"])
     
+    realFileNameBase = os.path.split(realFileName)[1]
+    realFileNameBaseClean = filename_clean(realFileNameBase)
+    log.debug("Checking Levenshtein distances of titles compared")
+    log.debug("  Comparing to: %s" % realFileNameBase)
+    for fileName in paths:
+        fileNameBase = os.path.split(fileName)[1]
+        fileNameBaseClean = filename_clean(fileNameBase)
+        distance = levenshtein_distance(realFileNameBaseClean, fileNameBaseClean)
+        if distance > 20:
+            log.debug("  - %s: %s, title ignored, difference too big" % (fileNameBase, distance))
+            paths.remove(fileName)
+        else:
+            log.debug("  + %s: %s, title ok" % (fileNameBase, distance))
+        
     for fileName in paths: 
         #guess = guesses["path_" + fileName] = {}
         guess = {'path':fileName}

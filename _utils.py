@@ -5,11 +5,28 @@ import sys
 import time
 import datetime
 
+import string
+import unicodedata
+import Levenshtein
+
 from logging.config import fileConfig
 fileConfig(os.path.join(os.path.dirname(__file__), 'logging.ini'), defaults={'logfilename': os.path.join(os.path.dirname(__file__), 'info.log').replace("\\", "/")})
 
 log = logging.getLogger(__name__)
 
+def filename_clean(filename, real_clean=False):
+    if real_clean:
+        validFilenameChars = "%s%s" % (string.ascii_letters, string.digits)
+    else:
+        validFilenameChars = "%s%s" % (string.ascii_letters, string.digits)
+    filename_unicode = unicode(filename)
+    filename_normalized = unicodedata.normalize('NFKD', filename_unicode).encode('ASCII', 'ignore')
+    filename_clean = ''.join(c for c in filename_normalized if c in validFilenameChars)
+    return filename_clean
+
+def levenshtein_distance(compare_base, compare_to):
+    return Levenshtein.distance(str(compare_base), str(compare_to))
+    
 class executionLocker():
     def __init__(self):
         self.lockfile = os.path.join(os.path.dirname(__file__), 'run.lock')
