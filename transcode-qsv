@@ -1,0 +1,17 @@
+export LIBVA_DRIVERS_PATH=/opt/intel/mediasdk/lib64
+export LIBVA_DRIVER_NAME=iHD
+export PKG_CONFIG_PATH=/opt/intel/opencl:
+export MFX_HOME=/opt/intel/mediasdk
+
+while getopts ":i:a:" opt; do
+  case $opt in
+    a) arga="-a"
+    ;;
+    i) argi="$OPTARG"
+    ;;
+    \?) echo "Invalid option -$OPTARG" >&2
+    ;;
+  esac
+done
+
+/opt/share/git-repos/sickbeard_mp4_automator/manual.py -i "$argi" $arga
