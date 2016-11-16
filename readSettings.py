@@ -90,7 +90,7 @@ class ReadSettings:
                         'meks-staging-extension': 'part',
                         'meks-metadata': '',
                         'meks-nfosearch': 'True',
-                        'meks-nfopaths': '.|..',
+                        'meks-nfopaths': '..',
                         'meks-walk-ignore': 'ignore.part,ignore.skip,recode.ignore,recode.skip',
                         'meks-transcode-ignore-names': 'sample',
                         'meks-transcode-ignore-size': '0',
@@ -352,16 +352,18 @@ class ReadSettings:
         except:
             self.meks_staging = False
         self.meks_h264_preset = config.get(section, "meks-h264-preset")
+        if self.meks_h264_preset not in ["ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow", "placebo"]:
+            self.meks_h264_preset = "medium"
         self.meks_metadata = config.get(section, "meks-metadata")
         self.meks_video_quality = config.get(section, "meks-video-quality")
         if self.meks_video_quality == '':
-            self.meks_video_quality = None
+            self.meks_video_quality = 23
         else:
             try:
                 self.meks_video_quality = int(self.meks_video_quality)
             except:
                 log.exception("Invalid h264 cfr quality, using default quality")
-                self.meks_video_quality = None
+                self.meks_video_quality = 23
         self.meks_walk_ignore = config.get(section, 'meks-walk-ignore').strip()
         if self.meks_walk_ignore == '':
             self.meks_walk_ignore = None

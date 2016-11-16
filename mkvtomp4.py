@@ -533,11 +533,12 @@ class MkvtoMp4:
         if self.settings.relocate_moov:
             options['video']['movflags'] = 'faststart'
 
-        # in h264, drop the constant bitrate and use the recommended quality settings.  ffmpeg default is 23 but our default is 20.
+        # in h264, drop the constant bitrate and use the recommended quality settings. 
+        # ffmpeg default is 23 but our default is 20.
         if vcodec == "h264" or vcodec == "h264qsv":
             del options['video']['bitrate']
-            options['video']['quality'] = self.settings.meks_video_quality if self.settings.meks_video_quality else 23
-            options['video']['preset'] = self.settings.meks_h264_preset if self.settings.meks_h264_preset else 'medium'
+            options['video']['quality'] = self.settings.meks_video_quality
+            options['video']['preset'] = self.settings.meks_h264_preset
             if self.settings.vbitrate is not None:
                 options['video']['maxbitrate'] = self.settings.vbitrate
 

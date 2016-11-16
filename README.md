@@ -21,27 +21,27 @@ Configuration directives
 --------------
 * Encoding:
   * `meks-metadata = <string>` - (String) - Allows to specify ffmpeg metadata information that should be included during transcode.
-  * `meks-same-vcodec-copy = False` - (True|False) - Allow copying of a video stream if input and output codec is the same, check *Finer grained conrol of codec processing*
-  * `meks-same-acodec-copy = False` - (True|False) - Same as for video, but for audio streams, check *Finer grained control of codec processing*
+  * `meks-same-vcodec-copy = True` - (True|False) - Allow copying of a video stream if input and output codec is the same, check *Finer grained conrol of codec processing*
+  * `meks-same-acodec-copy = True` - (True|False) - Same as for video, but for audio streams, check *Finer grained control of codec processing*
   * `meks-aac-adtstoasc = False` - (True|False) - Convert AAC ADTS streams to ASC, even if the stream is set to be copied.
 * Encoding / H.264 - see *h264 Preset and Quality*
   * `meks-video-quality = 23` - (Integer) - Enable quality-based transcoding
-  * `meks-h264-preset = fast` - (String) - Specify the H.264 encoding preset
+  * `meks-h264-preset = medium` - (String) - Specify the H.264 encoding preset
 * Encoding / H.264 / QSV - see *h264 QSV changes* 
-  * `meks-qsv-lookahead = 0` - (Integer) - Enable the Look Ahead rate control method using the specified value
+  * `meks-qsv-lookahead = 1` - (Integer) - Enable the Look Ahead rate control method using the specified value
 * Batch processing - see *Recursive mass-processing*
-  * `meks-transcode-ignore-names = sample,trailer` - (List of file name parts, seperated by ,) - File names to ignore during *Recursive mass-processing*
-  * `meks-transcode-ignore-size = 50000000` - (Float) - File sizes in bytes to ignore during *Recursive mass-processing*
+  * `meks-transcode-ignore-names = sample` - (List of file name parts, seperated by ,) - File names to ignore during *Recursive mass-processing*
+  * `meks-transcode-ignore-size = 0` - (Float) - File sizes in bytes to ignore during *Recursive mass-processing*
 * Staging:
   * `meks-staging = True` - (True|False) - Enables staged transcoding, check *Staging* below for more information
   * `meks-staging-extension = part` - (String) - Extension to add to files during transcoding-stage
   * `meks-walk-ignore = ignore.part,ignore.skip,recode.ignore,recode.skip` - (List of file names, seperated by ,) - Allows to specify ignore-files, check *Recursive mass-processing* below.
 * Tagging:
   * `meks-nfosearch = True` - (True|False) - Enable parsing of nfo files to search for a IMDB ID
-  * `meks-nfopaths = ..|../..` (List of paths, seperated by |) - Paths to search for nfo files
+  * `meks-nfopaths = ..` (List of paths, seperated by |) - Paths to search for nfo files
   * `meks-id3v2vers = 3` - (Integer) - Specify the ID3v2 version that should be used for tagging
-  * `meks-tag-rename = True` - (True|False) - Enable automatic renaming of the output file based on tagged data
-  * `meks-tag-language-auto = True` (True|False) - Enable to automatically identify the language for tagging based on audio streams
+  * `meks-tag-rename = False` - (True|False) - Enable automatic renaming of the output file based on tagged data
+  * `meks-tag-language-auto = False` (True|False) - Enable to automatically identify the language for tagging based on audio streams
 * Misc:
   * `move_to = True`- (True|False) - This was changed to boolean. Specify if you want to move or copy a file after processing, see *Copy-To and Move-To by file type*
 

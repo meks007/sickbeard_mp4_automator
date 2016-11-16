@@ -36,7 +36,7 @@ class Tvdb_mp4:
 
         for i in range(3):
             try:
-                self.tvdb_show = Tvdb(interactive=False, cache=False, banners=True, actors=True, forceConnect=True, language=language)
+                self.tvdb_show = Tvdb(interactive=False, cache=False, banners=self.settings.artwork, actors=True, forceConnect=True, language=language)
                 self.show = show
                 self.season = season
                 self.episode = episode

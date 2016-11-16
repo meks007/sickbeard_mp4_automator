@@ -144,7 +144,7 @@ def g_guessIt(fileName):
     
     realFileNameBase = os.path.split(realFileName)[1]
     realFileNameBaseClean = filename_clean(realFileNameBase)
-    log.debug("Checking Levenshtein distances of titles compared")
+    log.debug("Checking Levenshtein distances of titles")
     log.debug("  Comparing to: %s" % realFileNameBase)
     for fileName in paths:
         fileNameBase = os.path.split(fileName)[1]
@@ -239,6 +239,10 @@ def guessInfo(fileName, tagdata=None):
            guess = searcher.find(guess)
         elif providsearch == 2:
            guess = searcher.load(provid, guess)
+        elif providsearch == 3:
+           guess['what'] = {'term':provid, 'external_source':'tvdb_id'}
+           guess['type'] = 'find'
+           guess = searcher.find(guess)
        
     log.debug("Guessed data: %s" % guess)
     
