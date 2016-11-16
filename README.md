@@ -197,18 +197,17 @@ Well. Tough luck, but yes.
 The tagging processes ends as soon as enough information is collected to reliably tag the file.
 
 **Option to rename a file based on tagging information**  
-
 Specify `meks-tag-rename = True|False` (default: False) to enable renaming of tagged files using 2 basic renaming schemes:  
 
-  * Movie: `%(title)s (%(year)s) %(lang)s.%(ext)s`  
-  e.g.: *Movie.Name.(2014).English.mp4*
-  * TV: `%(show)s S%(season)sE%(episode)s %(title)s%(year)s %(lang)s %(format)s %(videoCodec)s%(sep)s%(releaseGroup)s.%(ext)s`  
+  * Movie: `%(title)s.(%(year)s).%(lang)s.%(format)s.%(videoCodec)s%(sep)s%(releaseGroup)s.%(ext)s`  
+  e.g.: *Movie.Name.(2014).English.HDTV.h264-FLEET.mp4*
+  * TV: `%(show)s.S%(season)sE%(episode)s.%(title)s%(year)s.%(lang)s.%(format)s.%(videoCodec)s%(sep)s%(releaseGroup)s.%(ext)s`  
   e.g.: *Series.Name.S02E18.Episode.Title.2012.English.HDTV.h264-FLEET.mp4*
 
-*PROPER tags are not applied during renaming at the moment!*
+Note (1): All spaces in any of the expanded variables will be replaced by dots. So *Movie Name* will be replaced with *Movie.Name*  
+Note (2): PROPER tags are not applied during renaming at the moment.
 
-**Options for tagging files**
-
+**Options for tagging files**  
 * The ID3v2 version can be specified using `meks-id3v2vers = <int>` (default: 3 (=ID3v2.3), for compatibility with Windows)
 * The tagging language can be dynamically determined based on input stream language. You can use `meks-tag-language-auto = True|False` (default: False) to specify whether the tagging language should be determined by the following:  
   * If the FIRST audio stream of an input file has a language identifier set, then that language will be used for loading and writing metadata information after transcode.

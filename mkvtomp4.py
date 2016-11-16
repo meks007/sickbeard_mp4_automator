@@ -793,7 +793,7 @@ class MkvtoMp4:
                     l.update({'year':tagmp4.date[:4]})
                     self.log.debug("Renaming movie using the following base data:")
                     self.log.debug(l)
-                    f = "%(title)s (%(year)s) %(lang)s.%(ext)s" % l
+                    f = "%(title)s (%(year)s) %(lang)s %(format)s %(videoCodec)s%(sep)s%(releaseGroup)s.%(ext)s" % l
                 elif tmkey == 3:
                     l.update({'show':tagmp4.show, 'year':tagmp4.airdate[:4], 'season':str(tagmp4.season).zfill(2), 'episode':str(tagmp4.episode).zfill(2)})
                     self.log.debug("Renaming TV show using the following base data:")
