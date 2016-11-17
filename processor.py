@@ -42,12 +42,12 @@ class fileProcessor:
         if tagmp4 is not None:
             if tagmp4.provider == "imdb" or tagmp4.provider == "tmdb":
                 try:
-                    self.log.info(">>> Processing movie - %s ..." % (tagmp4.title.encode(sys.stdout.encoding, errors='ignore')))
+                    self.log.info(">>> Processing movie: %s ..." % (tagmp4.title.encode(sys.stdout.encoding, errors='ignore')))
                 except:
                     self.log.info(">>> Processing movie ...")
             elif tagmp4.provider == "tvdb":
                 try:
-                    self.log.info(">>> Processing TV show - %s S%02dE%02d - %s ..." % (tagmp4.show.encode(sys.stdout.encoding, errors='ignore'), int(tagmp4.season), int(tagmp4.episode), tagmp4.title.encode(sys.stdout.encoding, errors='ignore')))
+                    self.log.info(">>> Processing TV show: %s - S%02dE%02d - %s ..." % (tagmp4.show.encode(sys.stdout.encoding, errors='ignore'), int(tagmp4.season), int(tagmp4.episode), tagmp4.title.encode(sys.stdout.encoding, errors='ignore')))
                 except:
                     self.log.info(">>> Processing TV episode ...")
         else:

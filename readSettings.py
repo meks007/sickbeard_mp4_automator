@@ -92,6 +92,7 @@ class ReadSettings:
                         'meks-nfosearch': 'True',
                         'meks-nfopaths': '..',
                         'meks-walk-ignore': 'ignore.part,ignore.skip,recode.ignore,recode.skip',
+                        'meks-walk-ignore-self': 'True',
                         'meks-transcode-ignore-names': 'sample',
                         'meks-transcode-ignore-size': '0',
                         'meks-qsv-lookahead': '1',
@@ -364,6 +365,7 @@ class ReadSettings:
             except:
                 log.exception("Invalid h264 cfr quality, using default quality")
                 self.meks_video_quality = 23
+        self.meks_walk_noself = config.getboolean(section, 'meks-walk-ignore-self')
         self.meks_walk_ignore = config.get(section, 'meks-walk-ignore').strip()
         if self.meks_walk_ignore == '':
             self.meks_walk_ignore = None

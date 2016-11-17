@@ -9,6 +9,8 @@ import string
 import unicodedata
 import Levenshtein
 
+from mutagen.mp4 import MP4
+
 from logging.config import fileConfig
 fileConfig(os.path.join(os.path.dirname(__file__), 'logging.ini'), defaults={'logfilename': os.path.join(os.path.dirname(__file__), 'info.log').replace("\\", "/")})
 
@@ -115,3 +117,27 @@ class LoggingAdapter(logging.LoggerAdapter):
                 name = "FIX_MY_NAME"
         log.debug("*** Creating LoggingAdapter for %s ***" % name)
         return LoggingAdapter(logging.getLogger(name), kwargs)
+
+
+class metadata_stamper:
+    @staticmethod
+    def stamp_encoder(mp4Path=None, video=None, stamp='untagged', save=True):
+        if video is None and mp4Path is not None:
+            video_tag = MP4(mp4Path)
+        elif video is not None:
+            video_tag = video
+        else:
+            video_tag = None
+        
+        if video_tag is not None:
+            video_tag['\xa9too'] = "meks-ffmpeg %s" % stamp
+            if save:
+                for i in range(3):
+                    try:
+                        video_tag.save()
+                        return True
+                    except IOError as e:
+                        time.sleep(5)
+                raise IOError
+            return video_tag
+        raise IOError

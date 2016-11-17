@@ -9,6 +9,7 @@ import locale
 import signal
 import unicodedata
 import string
+import re
 
 from subprocess import Popen, PIPE
 from random import randint
@@ -17,7 +18,7 @@ from converter import Converter, FFMpegConvertError
 from extensions import valid_input_extensions, valid_output_extensions, bad_subtitle_codecs, valid_subtitle_extensions, subtitle_codec_extensions
 from babelfish import Language
 from mutagen.mp4 import MP4, MP4Cover
-from _utils import LoggingAdapter
+from _utils import *
 
 console_encoding = locale.getdefaultlocale()[1] or 'UTF-8'
 
@@ -81,7 +82,8 @@ class MkvtoMp4:
                 rename = False
         
         if self.validSource(outputfile) == True:
-            self.log.info("Successful conversion of %s!" % (inputfile))
+            #self.log.info("Successful conversion of %s!" % (inputfile))
+            self.log.info("Input file was converted successfully!")
             self.log.debug("Conversion successful: %s => %s" % (inputfile, outputfile))
             
             if delete:
@@ -199,7 +201,7 @@ class MkvtoMp4:
         info = self.converter.probe(inputfile)
 
         # Video stream
-        self.log.info("Reading video stream")
+        # self.log.info("Reading video stream")
         self.log.info("Video codec detected: %s" % info.video.codec)
 
         try:
@@ -237,7 +239,7 @@ class MkvtoMp4:
         self.log.debug("Video bitrate: %s" % vbitrate)
 
         # Audio streams
-        self.log.info("Reading audio streams")
+        # self.log.info("Reading audio streams")
 
         overrideLang = True
         for a in info.audio:
@@ -263,7 +265,7 @@ class MkvtoMp4:
             except KeyError:
                 a.metadata['language'] = 'und'
 
-            self.log.info("Audio detected for stream #%s: %s [%s]" % (a.index, a.codec, a.metadata['language']))
+            self.log.info("Audio codec detected: stream #%s is %s [%s]" % (a.index, a.codec, a.metadata['language']))
 
             # Set undefined language to default language if specified
             if self.settings.adl is not None and a.metadata['language'] == 'und':
@@ -427,8 +429,8 @@ class MkvtoMp4:
                             conv = self.converter.convert(inputfile, outputfile, options, timeout=None)
                             for timecode in conv:
                                     pass
-
-                            self.log.info("%s created" % outputfile)
+                            #self.log.info("")
+                            #self.log.info("%s created" % outputfile)
                         except:
                             self.log.exception("Unabled to create external subtitle file for stream %s" % (s.index))
 
@@ -620,7 +622,8 @@ class MkvtoMp4:
                             sys.stdout.write(str(timecode))
                         sys.stdout.flush()
     
-                self.log.info("%s created" % outputfile)
+                #self.log.info("%s created" % outputfile)
+                metadata_stamper.stamp_encoder(mp4Path=outputfile)
     
                 try:
                     os.chmod(outputfile, self.settings.permissions)  # Set permissions of newly created file
@@ -799,7 +802,8 @@ class MkvtoMp4:
                     self.log.debug("Renaming TV show using the following base data:")
                     self.log.debug(l)
                     f = "%(show)s S%(season)sE%(episode)s %(title)s %(year)s %(lang)s %(format)s %(videoCodec)s%(sep)s%(releaseGroup)s.%(ext)s" % l
-                if len(f):
+                if not f is None and len(f):
+                    f = ' '.join(f.split())
                     f = f.replace(' ', '.')
                     validFilenameChars = "-_.()[] %s%s" % (string.ascii_letters, string.digits)
                     uf = unicodedata.normalize('NFKD', f).encode('ASCII', 'ignore')
@@ -811,8 +815,9 @@ class MkvtoMp4:
                     self.log.debug("  Previous final output file: %s" % o)
                     self.log.debug("  New final output file: %s" % finaloutput)
                     
-                    self.log.debug("Temporarily enabled staging due to tag rename operation")
-                    staging = True
+                    if not staging:
+                        self.log.debug("Temporarily enabled staging due to tag rename operation")
+                        staging = True
             else:
                 self.log.debug("Tagging class is invalid or guessed data was not found, not renaming")
         return [staging, finaloutput]
@@ -935,7 +940,7 @@ class MkvtoMp4:
             badfile = original
         badfile = badfile + "." + addExtension
         
-        self.log.info("Moving input file to original location and marking as %s" % addExtension)
+        self.log.debug("Moving input file to original location and marking as %s" % addExtension)
         self.log.debug("  Source:      %s" % inputfile)
         self.log.debug("  Destination: %s" % badfile)
         try:

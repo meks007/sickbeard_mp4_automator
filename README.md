@@ -30,12 +30,13 @@ Configuration directives
 * Encoding / H.264 / QSV - see *h264 QSV changes* 
   * `meks-qsv-lookahead = 1` - (Integer) - Enable the Look Ahead rate control method using the specified value
 * Batch processing - see *Recursive mass-processing*
-  * `meks-transcode-ignore-names = sample` - (List of file name parts, seperated by ,) - File names to ignore during *Recursive mass-processing*
-  * `meks-transcode-ignore-size = 0` - (Float) - File sizes in bytes to ignore during *Recursive mass-processing*
+  * `meks-walk-ignore = ignore.part,ignore.skip,recode.ignore,recode.skip` - (List of file names, seperated by ,) - Allows to specify ignore-files
+  * `meks-walk-ignore-self = True` - Skip files that were processed already
+  * `meks-transcode-ignore-names = sample` - (List of file name parts, seperated by ,) - File names to ignore in a batch run
+  * `meks-transcode-ignore-size = 0` - (Float) - File sizes in bytes to ignore in a batch run
 * Staging:
-  * `meks-staging = True` - (True|False) - Enables staged transcoding, check *Staging* below for more information
+  * `meks-staging = True` - (True|False) - Enables staged transcoding
   * `meks-staging-extension = part` - (String) - Extension to add to files during transcoding-stage
-  * `meks-walk-ignore = ignore.part,ignore.skip,recode.ignore,recode.skip` - (List of file names, seperated by ,) - Allows to specify ignore-files, check *Recursive mass-processing* below.
 * Tagging:
   * `meks-nfosearch = True` - (True|False) - Enable parsing of nfo files to search for a IMDB ID
   * `meks-nfopaths = ..` (List of paths, seperated by |) - Paths to search for nfo files
@@ -103,25 +104,29 @@ If you are like me and have all sorts of stuff in your incoming/download folder 
 Therefore autoProcess.ini now supports specifying:
 
 * `meks-walk-ignore = <ignore-files>` 
-* eg: recode.ignore,ignore.part,ignore.skip
+* eg: *recode.ignore,ignore.part,ignore.skip*
 
 During hierarchy walk the processor automatically skips a folder and all of it's subfolders and files if a file was found that matches <ignore-files>.
 
 Example, say you have the following situation:  
 
 * `meks-walk-ignore = ignore.part,recode.skip`
-* Hierarchy as follows
+* Hierarchy as follows  
 > Download  
-  Download/Apps - ['ignore.part']  
+  Download/Apps - [*ignore.part*]  
   Download/Videos  
-  Download/ISO - ['recode.skip']
+  Download/ISO - [*recode.skip*]
 
 A hierarchy walk would then skip all files and subfolders in Apps/* and ISO/* and only allow processing of files directly in Download as well as Videos/*
 
 Furthermore in mass processing mode, one can ignore files based on name and size restrictions:  
 
-- `meks-transcode-ignore-names = sample,example` (default: sample)
-- `meks-transcode-ignore-size = 40000000` (in Bytes, default: 0)
+* `meks-transcode-ignore-names = sample,example` (default: sample)
+* `meks-transcode-ignore-size = 40000000` (in Bytes, default: 0)
+
+Another option is to ignore files that were already processed/encoded by ourselves (read: this encoder). This can be helpful if, for whatever reason, encoding was aborted and needs to be resumed at a later point. You could then specify the same hierarchy and skip all files that were already processed in an earlier run. This feature makes use of the `encoder` MP4 tag. If the encoder tag matches our signature than that file is skipped during batch processing. You can control this feature with
+
+* `meks-walk-ignore-self = True|False` (default: True)
 
 Note that these restrictions do not apply if a file is targeted directly. They are only applied during hierarchy walk.
 

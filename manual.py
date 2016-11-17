@@ -94,7 +94,7 @@ def tvdbInfo(guessData, tvdbid=None):
         return {'type':3, 'provid':tvdbid, 'season':season, 'episode':episode}
     except:
         log.error("Unable to match against TVDB.")
-        return False
+        return None
 
 def g_guessMeta(inputfile):
     data = processor.getFfprobeData(inputfile)
@@ -165,7 +165,7 @@ def g_guessIt(fileName):
             guess['realpath'] =False
         
         fileName = fileName.replace('-', ' ')
-        guessData = guessit.guess_file_info(fileName)
+        guessData = guessit.guess_file_info(fileName, options={'allowed_countries':'x'})
         for key in ['title', 'type', 'season', 'episodeNumber', 'year']:
             if key in guessData:
                 guess[key] = guessData[key]
@@ -254,13 +254,13 @@ def guessInfo(fileName, tagdata=None):
                 #process_guess = guess['paths'][current_guess]
                 process_guess['titles'] = guess['titles']
                 info = getGuessInfo(process_guess)
-                if info is not None:
+                if info is not None and info is not False:
                     break
                 else:
                     log.debug("No data found for this query")
         else:
             info = getGuessInfo(guess)
-    if info is None:
+    if info is None or info is False:
         log.debug("Unable to guess data. Type or ID invalid?")
     else:
         info['guess'] = guess
@@ -402,10 +402,23 @@ def walkDir(dir, preserveRelative=False):
         
         for file in f:
             filepath = os.path.join(r, file)
+            
             if processor.validSource(filepath) == True:
-                files.append(filepath)
-                log.debug("File added to queue: %s" % filepath)
-    
+                try:
+                    if settings.meks_walk_noself:
+                        data = processor.getFfprobeData(filepath)
+                        try:
+                            if not data["format"]["tags"]["encoder"].startswith("meks-ffmpeg"):
+                                pass
+                            else:
+                                log.debug("File is self-encoded and will be skipped")
+                                raise ValueError
+                        except Exception as e:
+                            raise(e)
+                    files.append(filepath)
+                    log.debug("File added to queue: %s" % filepath)
+                except Exception as e:
+                    pass
     log.info("%s files ready for processing" % len(files))
     
     if len(files) > 0:

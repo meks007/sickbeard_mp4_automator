@@ -4,15 +4,15 @@ try:
     from urllib.request import urlretrieve
 except ImportError:
     from urllib import urlretrieve
-import urllib
 try:
     from StringIO import StringIO
 except ImportError:
     from io import StringIO
+import urllib    
 import tempfile
 import time
-from _utils import LoggingAdapter
-import logging
+from _utils import *
+
 from tvdb_api.tvdb_api import Tvdb
 from mutagen.mp4 import MP4, MP4Cover
 from extensions import valid_output_extensions, valid_poster_extensions
@@ -77,7 +77,7 @@ class Tvdb_mp4:
                 time.sleep(20)
 
     def writeTags(self, mp4Path, artwork=True, thumbnail=False):
-        self.log.info("Tagging file %s" % mp4Path)
+        self.log.debug("Tagging file %s" % mp4Path)
         if MkvtoMp4(self.settings).validSource(mp4Path) == True:
             video = MP4(mp4Path)
             try:
@@ -116,10 +116,11 @@ class Tvdb_mp4:
                     else:
                         video["covr"] = [MP4Cover(cover, MP4Cover.FORMAT_JPEG)]  # jpeg poster
             
-            if self.original:
-                video["\xa9too"] = ("meks-ffmpeg tvshow [%s-%s]" % (self.provider, self.providerid))
-            else:
-                video["\xa9too"] = ("meks-ffmpeg tvshow [%s-%s]" % (self.provider, self.providerid))
+            #if self.original:
+            #    video["\xa9too"] = ("meks-ffmpeg tvshow [%s-%s]" % (self.provider, self.providerid))
+            #else:
+            #    video["\xa9too"] = ("meks-ffmpeg tvshow [%s-%s]" % (self.provider, self.providerid))
+            video = metadata_stamper.stamp_encoder(video=video, save=False, stamp=("tvshow [%s-%s]" % (self.provider, self.providerid)))
             
             MP4(mp4Path).delete(mp4Path)
             

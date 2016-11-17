@@ -11,8 +11,8 @@ except ImportError:
 from requests import HTTPError
 import tempfile
 import time
-import logging
-from _utils import LoggingAdapter
+from _utils import *
+
 import tmdb_api as tmdb
 from mutagen.mp4 import MP4, MP4Cover
 from extensions import valid_output_extensions, valid_poster_extensions, tmdb_api_key
@@ -94,7 +94,7 @@ class tmdb_mp4:
                 time.sleep(20)
 
     def writeTags(self, mp4Path, artwork=True, thumbnail=False):
-        self.log.info("Tagging file %s" % mp4Path)
+        self.log.debug("Tagging file %s" % mp4Path)
         if MkvtoMp4(self.settings).validSource(mp4Path) == True:
             video = MP4(mp4Path)
             try:
@@ -132,10 +132,11 @@ class tmdb_mp4:
                     else:
                         video["covr"] = [MP4Cover(cover, MP4Cover.FORMAT_JPEG)]  # jpeg poster
 
-            if self.original:
-                video["\xa9too"] = ("meks-ffmpeg movie [%s-%s]" % (self.provider, self.providerid))
-            else:
-                video["\xa9too"] = ("meks-ffmpeg movie [%s-%s]" % (self.provider, self.providerid))
+            #if self.original:
+            #    video["\xa9too"] = ("meks-ffmpeg movie [%s-%s]" % (self.provider, self.providerid))
+            #else:
+            #    video["\xa9too"] = ("meks-ffmpeg movie [%s-%s]" % (self.provider, self.providerid))
+            video = metadata_stamper.stamp_encoder(video=video, save=False, stamp=("movie [%s-%s]" % (self.provider, self.providerid)))
             
             for i in range(3):
                 try:
@@ -267,7 +268,7 @@ class tmdb_mp4:
         for r in self.releases['countries']:
             if country.lower() == r['iso_3166_1'].lower():
                 return r['certification']
-                
+    
 class tmdbSearch:
     def __init__(self, language=None, logger=None, settings=None):
         if logger:
