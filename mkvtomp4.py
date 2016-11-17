@@ -82,7 +82,7 @@ class MkvtoMp4:
                 rename = False
         
         if self.validSource(outputfile) == True:
-            #self.log.info("Successful conversion of %s!" % (inputfile))
+            self.log.info("OK")
             self.log.info("Input file was converted successfully!")
             self.log.debug("Conversion successful: %s => %s" % (inputfile, outputfile))
             
@@ -617,12 +617,10 @@ class MkvtoMp4:
                     if reportProgress:
                         try:
                             sys.stdout.write('\r')
-                            sys.stdout.write('[{0}] {1}%'.format('#' * (timecode / 10) + ' ' * (10 - (timecode / 10)), timecode))
+                            sys.stdout.write('[{0}] {1}% '.format('#' * (timecode / 10) + ' ' * (10 - (timecode / 10)), timecode))
                         except:
                             sys.stdout.write(str(timecode))
                         sys.stdout.flush()
-    
-                #self.log.info("%s created" % outputfile)
                 metadata_stamper.stamp_encoder(mp4Path=outputfile)
     
                 try:
@@ -691,7 +689,7 @@ class MkvtoMp4:
                 try:
                     if self.removeFile(finaloutputfile, 2, 10, outputfile):
                         outputfile = finaloutputfile
-                        self.log.info("Transitioned staging file to output file %s" % outputfile)
+                        self.log.debug("Transitioned staging file to output file %s" % outputfile)
                     else:
                         self.log.error("Something happened during transition")
                         return False
@@ -863,7 +861,7 @@ class MkvtoMp4:
                     try:
                         self.removeFile(copytofile, 2, 10, inputfile, True)
                         files.append(copytofile)
-                        self.log.info("Copied output file to final destination %s" % cpdest)
+                        self.log.debug("Copied output file to final destination: %s" % cpdest)
                     except Exception as e:
                         raise(e)
                 else:
@@ -875,14 +873,14 @@ class MkvtoMp4:
                 try:
                     self.removeFile(files[0], 2, 10, None)
                     del files[0]
-                    self.log.info("Copy operation was executed as Move.")
+                    self.log.debug("Copy operation was executed as Move.")
                 except Exception as e:
                     raise(e)
             else:
                 self.log.error("No file copies were recorded, refusing to relocate output file")
         
         for filename in files:
-            self.log.debug("Final output file: %s" % filename)
+            self.log.info("Final output file: %s" % filename)
         
         return files
 

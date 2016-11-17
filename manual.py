@@ -314,7 +314,7 @@ def getTagData(filename, args=None):
     provid = None
     
     if settings.tagfile:
-        log.info(">>> Tagging file ...")
+        log.info(">>> Fetching metadata ...")
         
         lang = processor.getPrimaryLanguage(filename)
         searcher.language = lang[0]
@@ -361,7 +361,11 @@ def getTagData(filename, args=None):
                     tagmp4 = None
             
             if tagmp4 is None:
-                log.warning("Unknown metadata received, file will not be tagged")
+                if settings.meks_tagmandatory:
+                    log.error("Unknown metadata received and tagging is mandatory, abort")
+                    tagdata = False
+                else:
+                    log.warning("Unknown metadata received, file will not be tagged")
     else:
         log.debug("Tagging is disabled")
     

@@ -43,6 +43,7 @@ Configuration directives
   * `meks-id3v2vers = 3` - (Integer) - Specify the ID3v2 version that should be used for tagging
   * `meks-tag-rename = False` - (True|False) - Enable automatic renaming of the output file based on tagged data
   * `meks-tag-language-auto = False` (True|False) - Enable to automatically identify the language for tagging based on audio streams
+  * `meks-tag-mandatory = False` (True|False) - Specify if tagging is mandatory and if processing should abort if tagging is impossible.
 * Misc:
   * `move_to = True`- (True|False) - This was changed to boolean. Specify if you want to move or copy a file after processing, see *Copy-To and Move-To by file type*
 
@@ -212,11 +213,13 @@ Specify `meks-tag-rename = True|False` (default: False) to enable renaming of ta
 Note (1): All spaces in any of the expanded variables will be replaced by dots. So *Movie Name* will be replaced with *Movie.Name*  
 Note (2): PROPER tags are not applied during renaming at the moment.
 
-**Options for tagging files**  
+**Options for tagging files**
+
 * The ID3v2 version can be specified using `meks-id3v2vers = <int>` (default: 3 (=ID3v2.3), for compatibility with Windows)
 * The tagging language can be dynamically determined based on input stream language. You can use `meks-tag-language-auto = True|False` (default: False) to specify whether the tagging language should be determined by the following:  
   * If the FIRST audio stream of an input file has a language identifier set, then that language will be used for loading and writing metadata information after transcode.
   * If no or an invalid identifier was found then the language configured using `tag-language` will be used as a fallback.
+* If tagging is so important to you that you want a file to be tagged under any circumstances, then you can achieve that by specifying `meks-tag-mandatory = True` (default: False). Any processing will abort if it isn't possible to fetch valid metadata.
 
 Misc changes
 --------------
