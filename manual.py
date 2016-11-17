@@ -408,11 +408,12 @@ def walkDir(dir, preserveRelative=False):
                     if settings.meks_walk_noself:
                         data = processor.getFfprobeData(filepath)
                         try:
-                            if not data["format"]["tags"]["encoder"].startswith("meks-ffmpeg"):
-                                pass
-                            else:
-                                log.debug("File is self-encoded and will be skipped")
-                                raise ValueError
+                            if 'encoder' in data["format"]["tags"]:
+                                if not data["format"]["tags"]["encoder"].startswith("meks-ffmpeg"):
+                                    pass
+                                else:
+                                    log.debug("File is self-encoded and will be skipped")
+                                    raise ValueError
                         except Exception as e:
                             raise(e)
                     files.append(filepath)
