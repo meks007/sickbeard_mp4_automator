@@ -131,13 +131,20 @@ class MkvtoMp4:
 
     # meks customization - start
     # Determine if a source video file is in a valid format
-    def validSource(self, inputfile):
+    def validSource(self, inputfile, in_file=None):
         input_dir, filename, input_extension = self.parseFile(inputfile)
         
-        self.log.debug("Check if video file is valid - %s" % inputfile)
+        self.log.debug("Check if video file is valid %s - %s" % (in_file, inputfile))
         
         # Make sure the input_extension is some sort of recognized extension, and that the file actually exists
-        if (input_extension.lower() in valid_input_extensions or input_extension.lower() in valid_output_extensions or self.settings.meks_staging and input_extension.lower() == self.settings.meks_stageext.lower()):
+        if in_file is True:
+            b = True if input_extension.lower() in valid_input_extensions else False
+        elif in_file is False:
+            b = True if input_extension.lower() in valid_output_extensions else False
+        elif in_file is None:
+            b = True if (input_extension.lower() in valid_input_extensions or input_extension.lower() in valid_output_extensions) else False
+        
+        if (b or (self.settings.meks_staging and input_extension.lower() == self.settings.meks_stageext.lower())):
             if (os.path.isfile(inputfile)):
                 info = self.converter.probe(inputfile)
                 
@@ -545,9 +552,9 @@ class MkvtoMp4:
                 options['video']['maxbitrate'] = self.settings.vbitrate
 
         # If using h264qsv, add the codec in front of the input for decoding
-        if vcodec == "h264qsv" and info.video.codec.lower() == "h264" and self.settings.qsv_decoder and (info.video.video_level / 10) < 5:
+        if vcodec == "h264qsv" and info.video.codec.lower() == "h264" and self.settings.qsv_decoder: #and (info.video.video_level / 10) <= 5:
             options['preopts'].extend(['-vcodec', 'h264_qsv'])
-        if vcodec == "h264qsv" and (info.video.video_level / 10) < 5:
+        if vcodec == "h264qsv": # and (info.video.video_level / 10) <= 5:
             options['video']['look_ahead'] = self.settings.meks_qsv_lookahead
             if self.settings.meks_qsv_lookahead > 0:
                 del options['video']['quality']
@@ -784,22 +791,29 @@ class MkvtoMp4:
             
             lang = self.getPrimaryLanguage(outputfile)
             if tagmp4 is not None and tagmp4.guessData is not None:
-                l = {'title':tagmp4.title, 'lang':lang[1], 'ext':self.settings.output_extension, 'sep':''}
+                l = {'title':tagmp4.title, 'lang':lang[1], 'ext':self.settings.output_extension, 'sep':'', 'cd':''}
                 for key in ['format','videoCodec','releaseGroup']:
                     l.update({key:''})
                     if key in tagmp4.guessData:
                         l[key] = tagmp4.guessData[key]
                         l['sep'] = '-'
+                for key in ['cdNumber', 'part']:
+                    if key in tagmp4.guessData:
+                        l.update({'cd':"-cd%s" % tagmp4.guessData[key]})
                 if tmkey == 1 or tmkey == 2:
                     l.update({'year':tagmp4.date[:4]})
                     self.log.debug("Renaming movie using the following base data:")
                     self.log.debug(l)
-                    f = "%(title)s (%(year)s) %(lang)s %(format)s %(videoCodec)s%(sep)s%(releaseGroup)s.%(ext)s" % l
+                    f = "%(title)s (%(year)s) %(lang)s %(format)s %(videoCodec)s%(sep)s%(releaseGroup)s%(cd)s.%(ext)s" % l
                 elif tmkey == 3:
-                    l.update({'show':tagmp4.show, 'year':tagmp4.airdate[:4], 'season':str(tagmp4.season).zfill(2), 'episode':str(tagmp4.episode).zfill(2)})
+                    if tagmp4.airdate is not None:
+                        l.update({'year':tagmp4.airdate[:4]})
+                    else:
+                        l.update({'year':0})
+                    l.update({'show':tagmp4.show, 'season':str(tagmp4.season).zfill(2), 'episode':str(tagmp4.episode).zfill(2)})
                     self.log.debug("Renaming TV show using the following base data:")
                     self.log.debug(l)
-                    f = "%(show)s S%(season)sE%(episode)s %(title)s %(year)s %(lang)s %(format)s %(videoCodec)s%(sep)s%(releaseGroup)s.%(ext)s" % l
+                    f = "%(show)s S%(season)sE%(episode)s %(title)s %(year)s %(lang)s %(format)s %(videoCodec)s%(sep)s%(releaseGroup)s%(cd).%(ext)s" % l
                 if not f is None and len(f):
                     f = ' '.join(f.split())
                     f = f.replace(' ', '.')
@@ -880,6 +894,8 @@ class MkvtoMp4:
                 self.log.error("No file copies were recorded, refusing to relocate output file")
         
         for filename in files:
+            processTime = os.path.getmtime(filename) - 120
+            os.utime(filename, (processTime, processTime))
             self.log.info("Final output file: %s" % filename)
         
         return files

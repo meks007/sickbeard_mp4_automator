@@ -19,7 +19,7 @@ class fileProcessor:
         self.settings = settings
         self.converter = MkvtoMp4(settings)
     
-    def validSource(self, inputfile):
+    def validSource(self, inputfile, in_file=None):
         if self.settings.meks_trans_ignore_s > 0:
             fsize = os.path.getsize(inputfile)
             if fsize < self.settings.meks_trans_ignore_s:
@@ -31,7 +31,7 @@ class fileProcessor:
                 if i.lower() in fname:
                     self.log.debug("File = %s, ignore pattern match = %s, skipped" % (inputfile, i))
                     return False
-        return self.converter.validSource(inputfile)
+        return self.converter.validSource(inputfile, in_file=in_file)
     
     def getFfprobeData(self, inputfile):
         return self.converter.getFfprobeData(inputfile)

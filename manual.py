@@ -169,7 +169,7 @@ def g_guessIt(fileName):
         for key in ['title', 'type', 'season', 'episodeNumber', 'year']:
             if key in guessData:
                 guess[key] = guessData[key]
-        for key in ['format', 'releaseGroup', 'videoCodec']:
+        for key in ['format', 'releaseGroup', 'videoCodec', 'cdNumber', 'part']:
             if key in guessData:
                 guesses[key] = guessData[key]
         if 'series' in guessData:
@@ -247,7 +247,8 @@ def guessInfo(fileName, tagdata=None):
     log.debug("Guessed data: %s" % guess)
     
     if guess is not None:
-        if 'type' not in guess and 'paths' in guess:
+        #if 'type' not in guess and 'paths' in guess:
+        if 'paths' in guess:
             #i = 0
             for process_guess in guess['paths']:
                 #if current_guess[:5] == 'path_':
@@ -389,41 +390,55 @@ def walkDir(dir, preserveRelative=False):
     log.debug("Walking directory structure %s" % dir)
     ignore_folder = False
     files = []
+    files_step1 = []
     
     log.info(">>> Building list of files to process ...")
-    for r, d, f in os.walk(dir):
-        f = [fl for fl in f if not fl[0] == '.']
-        d[:] = [dr for dr in d if not dr[0] == '.']
-        
-        if not ignore_folder == False and r.startswith(ignore_folder):
-            continue
-        ignore_folder = False
-        
-        if any(x in settings.meks_walk_ignore for x in f):
-            log.debug("Folder %s contains ignore file, stepping over folder" % r)
-            ignore_folder = r
-            continue
-        
-        for file in f:
-            filepath = os.path.join(r, file)
+    if os.path.isdir(dir):
+        for r, d, f in os.walk(dir):
+            f = [fl for fl in f if not fl[0] == '.']
+            d[:] = [dr for dr in d if not dr[0] == '.']
             
-            if processor.validSource(filepath) == True:
-                try:
-                    if settings.meks_walk_noself:
-                        data = processor.getFfprobeData(filepath)
-                        try:
-                            if 'encoder' in data["format"]["tags"]:
-                                if not data["format"]["tags"]["encoder"].startswith("meks-ffmpeg"):
-                                    pass
-                                else:
-                                    log.debug("File is self-encoded and will be skipped")
-                                    raise ValueError
-                        except Exception as e:
-                            raise(e)
-                    files.append(filepath)
-                    log.debug("File added to queue: %s" % filepath)
-                except Exception as e:
-                    pass
+            if not ignore_folder == False and r.startswith(ignore_folder):
+                continue
+            ignore_folder = False
+            
+            if any(x in settings.meks_walk_ignore for x in f):
+                log.debug("Folder %s contains ignore file, stepping over folder" % r)
+                ignore_folder = r
+                continue
+            
+            for file in f:
+                filepath = os.path.join(r, file)
+                if processor.validSource(filepath, in_file=True) == True:
+                    files_step1.append(filepath)
+    elif os.path.isfile(dir):
+        with open(dir, 'r') as files_in:
+            for line in files_in:
+                line = line.replace('\n', '').replace('\r', '')
+                if len(line) > 0:
+                    if processor.validSource(line, in_file=True) == True:
+                        files_step1.append(line)
+     
+    try:
+        if len(files_step1) > 0:
+            for filepath in files_step1:
+                if settings.meks_walk_noself:
+                    data = processor.getFfprobeData(filepath)
+                    try:
+                        if 'tags' in data["format"] and 'encoder' in data["format"]["tags"]:
+                            if not data["format"]["tags"]["encoder"].startswith("meks-ffmpeg"):
+                                pass
+                            else:
+                                log.debug("File is self-encoded and will be skipped")
+                                raise ValueError
+                    except Exception as e:
+                        raise(e)
+                files.append(filepath)
+                log.debug("File added to queue: %s" % filepath)
+    except Exception as e:
+        pass 
+                    
+        
     log.info("%s files ready for processing" % len(files))
     
     if len(files) > 0:
@@ -460,6 +475,7 @@ def main():
         execlock.lock()
         
         parser.add_argument('-i', '--input', help='The source that will be converted. May be a file or a directory')
+        parser.add_argument('-ti', '--textinput', help='A text file containing one file per line, that should be batch processed')
         parser.add_argument('-c', '--config', help='Specify an alternate configuration file location')
         parser.add_argument('-a', '--auto', action="store_true", help="Enable auto mode, the script will not prompt you for any further input, good for batch files. It will guess the metadata using guessit")
         parser.add_argument('-tv', '--tvdbid', help="Set the TVDB ID for a tv show")
@@ -528,14 +544,21 @@ def main():
             path = (str(args['input']))
             try:
                 path = glob.glob(path)[0]
+                textpath = False
             except:
                 pass
+        elif (args['textinput']):
+            path = (str(args['textinput']))
+            textpath = True
         else:
             path = getValue("Enter path to file")
-        
-        if os.path.isdir(path):
+            textpath = False
+            
+        if os.path.isdir(path) and not textpath:
             walkDir(path, preserveRelative=args['preserveRelative'])
-        elif os.path.isfile(path):
+        elif os.path.isfile(path) and textpath:
+            walkDir(path)
+        elif os.path.isfile(path) and not textpath:
             processFile(path)
         elif not os.path.isfile(path) and not os.path.isdir(path):
             log.error("File not found - %s" % (path))

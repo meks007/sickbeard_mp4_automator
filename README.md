@@ -13,7 +13,7 @@ A lot of what I think is useful FOR MY NEEDS is implemented. The following is an
 
 That being said here goes the changes so far:
 
-Additioal libraries required
+Additional libraries required
 --------------
 * `Levenhstein` - Run `pip install python-Levenshtein`. Needed for distance matching during tagging.
 

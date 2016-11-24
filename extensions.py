@@ -1,4 +1,5 @@
-valid_input_extensions = ['mkv', 'avi', 'ts', 'mov', 'vob', 'mpg', 'mts']
+valid_input_extensions = ['mkv', 'avi', 'divx', 'ts', 'mov', 'vob', 'mpg', 'mpeg', 'm4v', 'mts', 'mp4', 'ogm', 'flv']
+#valid_input_extensions = ['avi']
 valid_output_extensions = ['mp4', 'm4v']
 valid_audio_codecs = ['aac', 'ac3', 'dts']
 valid_poster_extensions = ['jpg', 'png']
