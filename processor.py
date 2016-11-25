@@ -53,7 +53,7 @@ class fileProcessor:
         else:
             self.log.info(">>> Processing file ...")
     
-    def process(self, inputfile, tagmp4=None, relativePath=None, original=None):
+    def process(self, inputfile, tagmp4=None, relativePath=None, original=None, fileno=[1,1]):
         output_files = []
         
         if self.converter.validSource(inputfile) == True:
@@ -75,10 +75,10 @@ class fileProcessor:
                 
                 # REPLICATE
                 output['tag'] = tagmp4
-                output_files = self.converter.replicate(output, relativePath=relativePath)            
+                output_files = self.converter.replicate(output, relativePath=relativePath)
                 
                 # FINALIZE
-                if self.settings.postprocess:
+                if self.settings.postprocess: #and fileno[0] == fileno[1]:
                     post_processor = PostProcessor(output_files)
                     if tagmp4 is not None:
                         if tagmp4.provider == "imdb" or tagmp4.provider == "tmdb":

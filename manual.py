@@ -169,6 +169,8 @@ def g_guessIt(fileName):
         for key in ['title', 'type', 'season', 'episodeNumber', 'year']:
             if key in guessData:
                 guess[key] = guessData[key]
+            else:
+                guess[key] = 0
         for key in ['format', 'releaseGroup', 'videoCodec', 'cdNumber', 'part']:
             if key in guessData:
                 guesses[key] = guessData[key]
@@ -248,17 +250,20 @@ def guessInfo(fileName, tagdata=None):
     
     if guess is not None:
         #if 'type' not in guess and 'paths' in guess:
-        if 'paths' in guess:
+        if 'paths' in guess and not 'type' in guess:
             #i = 0
             for process_guess in guess['paths']:
-                #if current_guess[:5] == 'path_':
-                #process_guess = guess['paths'][current_guess]
-                process_guess['titles'] = guess['titles']
-                info = getGuessInfo(process_guess)
-                if info is not None and info is not False:
-                    break
+                if 'type' in process_guess:
+                    #if current_guess[:5] == 'path_':
+                    #process_guess = guess['paths'][current_guess]
+                    process_guess['titles'] = guess['titles']
+                    info = getGuessInfo(process_guess)
+                    if info is not None and info is not False:
+                        break
+                    else:
+                        log.debug("No data found for this query")
                 else:
-                    log.debug("No data found for this query")
+                    log.debug("Ignoring match, no type for this Guess was determined.")
         else:
             info = getGuessInfo(guess)
     if info is None or info is False:
@@ -381,7 +386,7 @@ def processFile(inputfile, fileno=[1,1], relativePath=None):
         
     if tagdata is not False:
         # this does everything from here.
-        return processor.process(inputfile=inputfile, tagmp4=tagmp4, relativePath=relativePath)
+        return processor.process(inputfile=inputfile, tagmp4=tagmp4, relativePath=relativePath, fileno=fileno)
     else:
         log.info("File skipped")
         return False
@@ -418,10 +423,10 @@ def walkDir(dir, preserveRelative=False):
                 if len(line) > 0:
                     if processor.validSource(line, in_file=True) == True:
                         files_step1.append(line)
-     
-    try:
-        if len(files_step1) > 0:
-            for filepath in files_step1:
+    
+    if len(files_step1) > 0:
+        for filepath in files_step1:
+            try:
                 if settings.meks_walk_noself:
                     data = processor.getFfprobeData(filepath)
                     try:
@@ -429,16 +434,15 @@ def walkDir(dir, preserveRelative=False):
                             if not data["format"]["tags"]["encoder"].startswith("meks-ffmpeg"):
                                 pass
                             else:
-                                log.debug("File is self-encoded and will be skipped")
+                                log.debug("File is self-encoded and will be skipped: %s" % filepath)
                                 raise ValueError
                     except Exception as e:
                         raise(e)
                 files.append(filepath)
                 log.debug("File added to queue: %s" % filepath)
-    except Exception as e:
-        pass 
-                    
-        
+            except ValueError as e:
+                pass
+    
     log.info("%s files ready for processing" % len(files))
     
     if len(files) > 0:
