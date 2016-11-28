@@ -813,11 +813,11 @@ class MkvtoMp4:
                     l.update({'show':tagmp4.show, 'season':str(tagmp4.season).zfill(2), 'episode':str(tagmp4.episode).zfill(2)})
                     self.log.debug("Renaming TV show using the following base data:")
                     self.log.debug(l)
-                    f = "%(show)s S%(season)sE%(episode)s %(title)s %(year)s %(lang)s %(format)s %(videoCodec)s%(sep)s%(releaseGroup)s%(cd).%(ext)s" % l
+                    f = "%(show)s S%(season)sE%(episode)s %(title)s %(year)s %(lang)s %(format)s %(videoCodec)s%(sep)s%(releaseGroup)s%(cd)s.%(ext)s" % l
                 if not f is None and len(f):
                     f = ' '.join(f.split())
                     f = f.replace(' ', '.')
-                    validFilenameChars = "-_.()[] %s%s" % (string.ascii_letters, string.digits)
+                    validFilenameChars = "-_.()[]& %s%s" % (string.ascii_letters, string.digits)
                     uf = unicodedata.normalize('NFKD', f).encode('ASCII', 'ignore')
                     constructed_filename = ''.join(c for c in uf if c in validFilenameChars)
                     

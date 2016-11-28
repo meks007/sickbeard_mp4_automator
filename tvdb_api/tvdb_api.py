@@ -879,11 +879,11 @@ class Tvdb:
         log.debug('Getting all episodes of %s' % (sid))
 
         if self.config['useZip']:
-            url = self.config['url_epInfo_zip'] % (sid, language)
+            url = self.config['url_epInfo_zip'] % (sid, getShowInLanguage)
         else:
-            url = self.config['url_epInfo'] % (sid, language)
+            url = self.config['url_epInfo'] % (sid, getShowInLanguage)
 
-        epsEt = self._getetsrc( url, language=language)
+        epsEt = self._getetsrc( url, language=getShowInLanguage)
 
         for cur_ep in epsEt.findall("Episode"):
 

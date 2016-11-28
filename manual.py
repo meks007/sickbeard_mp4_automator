@@ -80,7 +80,7 @@ def tvdbInfo(guessData, tvdbid=None):
         fullseries = series + " (" + str(guessData["year"]) + ")"
     season = guessData["season"]
     episode = guessData["episodeNumber"]
-    t = tvdb_api.Tvdb(interactive=False, cache=False, banners=False, actors=False, forceConnect=True, language='en')
+    t = tvdb_api.Tvdb(interactive=False, cache=False, banners=False, actors=False, forceConnect=True, language=settings.taglanguage)
     try:
         try:
             tvdbid = str(tvdbid) if tvdbid else t[fullseries]['id']
@@ -150,7 +150,7 @@ def g_guessIt(fileName):
         fileNameBase = os.path.split(fileName)[1]
         fileNameBaseClean = filename_clean(fileNameBase)
         distance = levenshtein_distance(realFileNameBaseClean, fileNameBaseClean)
-        if distance > 20:
+        if distance > 50:
             log.debug("  - %s: %s, title ignored, difference too big" % (fileNameBase, distance))
             paths.remove(fileName)
         else:
@@ -176,6 +176,10 @@ def g_guessIt(fileName):
                 guesses[key] = guessData[key]
         if 'series' in guessData:
             guess['title'] = guessData['series']
+            if 'season' in guessData and is_number(guessData['season']):
+                guesses['season'] = guessData['season']
+            if 'episodeNumber' in guessData and is_number(guessData['episodeNumber']):
+                guesses['episodeNumber'] = guessData['episodeNumber']
         if 'title' in guess:
             log.debug("Trying to calculate alternative GuessIt titles")
             # init list and add default title as element
@@ -494,6 +498,7 @@ def main():
         parser.add_argument('-np', '--nopost', action="store_true", help="Overrides and disables the execution of additional post processing scripts")
         parser.add_argument('-pr', '--preserveRelative', action='store_true', help="Preserves relative directories when processing multiple files using the copy-to or move-to functionality")
         parser.add_argument('-cmp4', '--convertmp4', action='store_true', help="Overrides convert-mp4 setting in autoProcess.ini enabling the reprocessing of mp4 files")
+        parser.add_argument('-tl', '--taglanguage', help="Overrides tagging language")
         #parser.add_argument('-m', '--moveto', help="Override move-to value setting in autoProcess.ini changing the final destination of the file")
     
         args = vars(parser.parse_args())
@@ -539,7 +544,9 @@ def main():
         if (args['nopost']):
             settings.postprocess = False
             log.info("No post processing enabled")
-    
+        if (args['taglanguage']):
+            settings.taglanguage = args['taglanguage']
+            settings.meks_taglangauto = False
         processor = fileProcessor(settings=settings)
         searcher = tmdbSearch(settings=settings)
     

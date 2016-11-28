@@ -29,6 +29,13 @@ def filename_clean(filename, real_clean=False):
 def levenshtein_distance(compare_base, compare_to):
     return Levenshtein.distance(str(compare_base), str(compare_to))
     
+def is_number(s):
+    try:
+        float(s)
+        return True
+    except ValueError:
+        return False
+    
 class executionLocker():
     def __init__(self):
         self.lockfile = os.path.join(os.path.dirname(__file__), 'run.lock')
