@@ -336,6 +336,7 @@ class tmdbSearch:
         guess['tmdbid'] = info['id']
         guess['vote_count'] = info['vote_count']
         guess['titles'] = [[guess['title'], guess['year']]]
+        guess['matched'] = True
         return guess
     
     def find(self, guess, external_source='imdb_id'):

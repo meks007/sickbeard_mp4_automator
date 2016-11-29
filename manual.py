@@ -107,6 +107,7 @@ def g_guessMeta(inputfile):
     return title
 
 def g_guessNfo(inputfile):
+    allres = ["((?:http\:\/\/)?www\.imdb\.(?:com|de)/(?:title/)?(tt\d+))", "(<id>(tt\d+)</id>)"]
     if settings.meks_nfosearch:
         log.debug("Tagging: Nfo")
         fpath = os.path.split(inputfile)[0]
@@ -121,10 +122,11 @@ def g_guessNfo(inputfile):
                     log.debug("Found nfo file %s" % fullfile)
                     with open(fullfile, 'r') as urls_in:
                         for line in urls_in:
-                            links = re.findall(r"((?:http\:\/\/)?www\.imdb\.com/(?:title/)?(tt\d+))", line)
-                            if links:
-                                log.debug("Extracted IMDB ID %s from %s" % (links[0][1], file))
-                                return links[0][1]
+                            for thisre in allres:
+                                links = re.findall(thisre, line)
+                                if links:
+                                    log.debug("Extracted IMDB ID %s from %s" % (links[0][1], file))
+                                    return links[0][1]
         log.debug("No nfo files found")
     return None
 
@@ -133,28 +135,14 @@ def g_guessIt(fileName):
     guesses['titles'] = []
     log.debug("Tagging: GuessIt")
     
+    paths = [] 
     realFileName = fileName
 
-    paths = [] 
     meta = g_guessMeta(fileName)   
     if meta is not None:
         meta = meta + ".mp4"
         paths.append(meta)
     paths.extend([fileName, os.path.split(fileName)[0]+".mp4"])
-    
-    realFileNameBase = os.path.split(realFileName)[1]
-    realFileNameBaseClean = filename_clean(realFileNameBase)
-    log.debug("Checking Levenshtein distances of titles")
-    log.debug("  Comparing to: %s" % realFileNameBase)
-    for fileName in paths:
-        fileNameBase = os.path.split(fileName)[1]
-        fileNameBaseClean = filename_clean(fileNameBase)
-        distance = levenshtein_distance(realFileNameBaseClean, fileNameBaseClean)
-        if distance > 50:
-            log.debug("  - %s: %s, title ignored, difference too big" % (fileNameBase, distance))
-            paths.remove(fileName)
-        else:
-            log.debug("  + %s: %s, title ok" % (fileNameBase, distance))
         
     for fileName in paths: 
         #guess = guesses["path_" + fileName] = {}
@@ -176,10 +164,6 @@ def g_guessIt(fileName):
                 guesses[key] = guessData[key]
         if 'series' in guessData:
             guess['title'] = guessData['series']
-            if 'season' in guessData and is_number(guessData['season']):
-                guesses['season'] = guessData['season']
-            if 'episodeNumber' in guessData and is_number(guessData['episodeNumber']):
-                guesses['episodeNumber'] = guessData['episodeNumber']
         if 'title' in guess:
             log.debug("Trying to calculate alternative GuessIt titles")
             # init list and add default title as element
@@ -212,6 +196,46 @@ def getGuessInfo(guess):
         info = tvdbInfo(guess)
     return info
     
+def calculate_guesses(guess, file_name=None):
+    log.debug("Guessed data: %s" % guess)
+    
+    if 'paths' in guess:
+        for path in guess['paths']:
+            if 'season' in path and is_number(path['season']) and ( 'season' not in guess or guess['season'] < path['season'] ):
+                guess['season'] = path['season']
+            if 'episodeNumber' in path and is_number(path['episodeNumber']) and ( 'episodeNumber' not in guess or guess['episodeNumber'] < path['episodeNumber'] ):
+                guess['episodeNumber'] = path['episodeNumber']
+    
+    if 'matched' in guess and guess['matched']:
+        if 'paths' in guess:
+            del guess['paths']
+        #if 'what' in guess:
+        #    del guess['what']
+        #if 'titles' in guess:
+        #    del guess['titles']
+    
+    if file_name is not None and 'paths' in guess:
+        paths = guess['paths']
+        realFileName = file_name
+        realFileNameBase = os.path.split(realFileName)[1]
+        realFileNameBaseClean = filename_clean(realFileNameBase)
+        log.debug("Checking Levenshtein distances of titles")
+        log.debug("  Comparing to: %s" % realFileNameBase)
+        for path in paths:
+            if 'path' in path:
+                fileName = path['path']
+                fileNameBase = os.path.split(fileName)[1]
+                fileNameBaseClean = filename_clean(fileNameBase)
+                distance = levenshtein_distance(realFileNameBaseClean, fileNameBaseClean)
+                if distance > 20:
+                    log.debug("  - %s: %s, title ignored, difference too big" % (fileNameBase, distance))
+                    paths.remove(path)
+                else:
+                    log.debug("  + %s: %s, title ok" % (fileNameBase, distance))
+    
+    log.debug("Calculated data: %s" % guess)
+    return guess
+    
 def guessInfo(fileName, tagdata=None):
     if not settings.fullpathguess:
         fileName = os.path.basename(fileName)
@@ -236,7 +260,7 @@ def guessInfo(fileName, tagdata=None):
     
     ### GuessIt ###
     guess = g_guessIt(fileName=fileName)
-
+    
     if provid is not None:
         log.debug("Final ID of type %s from all sources: %s" % (providsearch, provid))
         if providsearch == 1:
@@ -250,22 +274,22 @@ def guessInfo(fileName, tagdata=None):
            guess['type'] = 'find'
            guess = searcher.find(guess)
        
-    log.debug("Guessed data: %s" % guess)
+    guess = calculate_guesses(guess)
     
     if guess is not None:
-        #if 'type' not in guess and 'paths' in guess:
-        if 'paths' in guess and not 'type' in guess:
-            #i = 0
+        if 'paths' in guess and 'type' not in guess:
             for process_guess in guess['paths']:
                 if 'type' in process_guess:
-                    #if current_guess[:5] == 'path_':
-                    #process_guess = guess['paths'][current_guess]
-                    process_guess['titles'] = guess['titles']
-                    info = getGuessInfo(process_guess)
+                    for title in guess['titles']:
+                        process_guess['title'] = title[0]
+                        process_guess['titles'] = guess['titles']
+                        info = getGuessInfo(process_guess)
+                        if info is not None and info is not False:
+                            break
+                        else:
+                            log.debug("No data found for this query")
                     if info is not None and info is not False:
                         break
-                    else:
-                        log.debug("No data found for this query")
                 else:
                     log.debug("Ignoring match, no type for this Guess was determined.")
         else:
@@ -273,7 +297,9 @@ def guessInfo(fileName, tagdata=None):
     if info is None or info is False:
         log.debug("Unable to guess data. Type or ID invalid?")
     else:
-        info['guess'] = guess
+        guess['matched'] = True
+        info['guess'] = calculate_guesses(guess)
+    
     return info
 
 def getinfo(fileName=None, silent=False, tagdata=None):
@@ -511,12 +537,8 @@ def main():
         # Settings overrides
         settings = None
         if(args['config']):
-            if os.path.exists(args['config']):
-                log.info('Using configuration file "%s"' % (args['config']))
-                settings = ReadSettings(os.path.split(args['config'])[0], os.path.split(args['config'])[1])
-            elif os.path.exists(os.path.join(os.path.dirname(sys.argv[0]), args['config'])):
-                log.info('Using configuration file "%s"' % (args['config']))
-                settings = ReadSettings(os.path.dirname(sys.argv[0]), args['config'])
+            log.info('Using configuration file "%s"' % (args['config']))
+            settings = settingsProvider(config_file=args['config']).defaultSettings
         if settings is None:
             if args['config']:
                 log.info('Configuration file "%s" not present, using default configuration' % (args['config']))

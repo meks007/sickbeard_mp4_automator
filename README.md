@@ -190,6 +190,12 @@ nfo files will *always* be searched in the same path as the inputfile. In additi
 
 *Only the first nfo file with a valid IMDB link only the first IMDB link in that file will be used for tagging. Any subsequent nfo files or multiple links within the same file are disregarded.*
 
+Regular Expressions used for parsing NFO files:  
+
+* `((?:http\:\/\/)?www\.imdb\.(?:com|de)/(?:title/)?(tt\d+))`
+  * ex: `http://www.imdb.com/title/tt123456`
+* `(<id>(tt\d+)</id>)`
+
 **3. Tagging via GuessIt**  
 The python GuessIt library can be used to guess information based on the input filename. Upon parsing the file different search queries are directed towards TMDB in order to load further information.
 
@@ -223,6 +229,8 @@ Note (2): PROPER tags are not applied during renaming at the moment.
 
 Misc changes
 --------------
+* Config-files specified using -c or --config must be located within the application and cannot be stored outside the application directory.  
+
 * Threads setting removed as it is deprecated and completely removed on newer ffmpeg versions
 
 * Access to autoSettings.ini is unified:  
@@ -230,7 +238,9 @@ Misc changes
 `settingsProvider().defaultSettings`  
 This can be extended using multiple providers for multiple configurations (say: different configs for Movies and TV shows), e.g.:  
 `settingsProvider().settingsMovies`  
-`settingsProvider().settingsTV`
+`settingsProvider().settingsTV`  
+* Furthermore, `settingsProvider(config_file=<config_file>)...`can be used to specify an alternative configuration file. Be aware that `<config_file>` must not be outside the application directory, hence config_file is relative to the script's path, for example conf/autoProcessGerman.ini.
+
 * Similarily, access to logging is unified, eg:
 `sys.path.append(os.path.join(os.path.dirname(__file__), ".."))`  
 `from _utils import LoggingAdapter`  

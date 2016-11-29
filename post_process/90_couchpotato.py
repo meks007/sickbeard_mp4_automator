@@ -8,7 +8,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 from readSettings import settingsProvider
 from _utils import LoggingAdapter
 
-cpconfig = settingsProvider().defaultSettings.CP
+cpconfig = settingsProvider(config_file=os.environ.get('MH_CONFIG')).defaultSettings.CP
 log = LoggingAdapter.getLogger()
 
 def apiPostProcess():

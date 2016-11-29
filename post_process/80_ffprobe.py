@@ -27,7 +27,7 @@ def main():
 	if 'MH_FILES' in os.environ:
 		log.info("FFprobe dump of processed files")
 		
-		settings = settingsProvider().defaultSettings
+		settings = settingsProvider(config_file=os.environ.get('MH_CONFIG')).defaultSettings
 		
 		files = json.loads(os.environ.get('MH_FILES'))
 		for filename in files:

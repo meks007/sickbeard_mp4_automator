@@ -711,5 +711,9 @@ class ReadSettings:
         return output
 
 class settingsProvider:
-    def __init__(self, logger=None):
-        self.defaultSettings = ReadSettings(os.path.dirname(__file__), "autoProcess.ini", logger=logger)
+    def __init__(self, logger=None, config_file="autoProcess.ini"):
+        if os.path.exists(os.path.join(os.path.dirname(__file__), config_file)):
+            os.environ['MH_CONFIG'] = config_file
+            self.defaultSettings = ReadSettings(os.path.dirname(__file__), config_file, logger=logger)
+        else:
+            self.defaultSettings = None

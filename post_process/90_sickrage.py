@@ -8,7 +8,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 from readSettings import settingsProvider
 from _utils import LoggingAdapter
 
-srconfig = settingsProvider().defaultSettings.Sickrage
+srconfig = settingsProvider(config_file=os.environ.get('MH_CONFIG')).defaultSettings.Sickrage
 log = LoggingAdapter.getLogger()
 
 def apiPostProcess():
