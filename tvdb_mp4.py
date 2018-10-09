@@ -11,6 +11,7 @@ except ImportError:
 import urllib    
 import tempfile
 import time
+from requests import HTTPError
 from _utils import *
 
 from tvdb_api.tvdb_api import Tvdb

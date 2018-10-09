@@ -558,7 +558,10 @@ class MkvtoMp4:
             options['video']['look_ahead'] = self.settings.meks_qsv_lookahead
             if self.settings.meks_qsv_lookahead > 0:
                 del options['video']['quality']
-
+            # added for compatibility with ffmpeg > 3.2.4 and h264_qsv according to ffmpeg ticket #7030 comment 21
+            options['preopts'].extend(['-init_hw_device', 'qsv=hw'])
+            options['preopts'].extend(['-filter_hw_device', 'hw'])
+            options['postopts'].extend(['-vf', 'hwupload=extra_hw_frames=64,format=qsv'])
         if self.settings.meks_metadata:
             options['video']['metadata'] = self.settings.meks_metadata
         

@@ -100,14 +100,17 @@ def g_guessMeta(inputfile):
     data = processor.getFfprobeData(inputfile)
     try:
         title = data["format"]["tags"]["title"]
-        log.debug("Found title %s in file metadata" % title)
+        if title and len(title) > 1:
+            log.debug("Found title %s in file metadata" % title)
+        else:
+            raise ValueError
     except:
         title = None
         log.debug("No metadata found found in file")
     return title
 
 def g_guessNfo(inputfile):
-    allres = ["((?:http\:\/\/)?www\.imdb\.(?:com|de)/(?:title/)?(tt\d+))", "(<id>(tt\d+)</id>)"]
+    allres = ["((?:http\:\/\/)?(?:www\.|german\.|)imdb\.(?:com|de)\/(?:title\/)?(tt\d+))", "(<id>(tt\d+)</id>)"]
     if settings.meks_nfosearch:
         log.debug("Tagging: Nfo")
         fpath = os.path.split(inputfile)[0]
@@ -138,7 +141,8 @@ def g_guessIt(fileName):
     paths = [] 
     realFileName = fileName
 
-    meta = g_guessMeta(fileName)   
+    #meta = g_guessMeta(fileName)   
+    meta = None
     if meta is not None:
         meta = meta + ".mp4"
         paths.append(meta)
@@ -203,7 +207,7 @@ def calculate_guesses(guess, file_name=None):
         for path in guess['paths']:
             if 'season' in path and is_number(path['season']) and ( 'season' not in guess or guess['season'] < path['season'] ):
                 guess['season'] = path['season']
-            if 'episodeNumber' in path and is_number(path['episodeNumber']) and ( 'episodeNumber' not in guess or guess['episodeNumber'] < path['episodeNumber'] ):
+            if 'episodeNumber' in path and is_number(path['episodeNumber']) and ( 'episodeNumber' not in guess or guess['episodeNumber'] < path['episodeNumber'] or path['realpath'] ):
                 guess['episodeNumber'] = path['episodeNumber']
     
     if 'matched' in guess and guess['matched']:
@@ -242,6 +246,7 @@ def guessInfo(fileName, tagdata=None):
     
     imdbid = None
     info = None
+    guess = {}
     
     provid = None
     providsearch = 1
@@ -253,13 +258,13 @@ def guessInfo(fileName, tagdata=None):
         providsearch = tagdata['type'] #0
         log.debug("ID of type %s from Tag data: %s" % (providsearch, provid))
     
+    ### GuessIt ###
+    guess = g_guessIt(fileName=fileName)
+    
     ### NFO ###
     providGuess = g_guessNfo(fileName)
     log.debug("ID of type 1 from Nfo guess: %s" % providGuess)
     provid = providGuess if provid is None else provid
-    
-    ### GuessIt ###
-    guess = g_guessIt(fileName=fileName)
     
     if provid is not None:
         log.debug("Final ID of type %s from all sources: %s" % (providsearch, provid))
@@ -273,7 +278,7 @@ def guessInfo(fileName, tagdata=None):
            guess['what'] = {'term':provid, 'external_source':'tvdb_id'}
            guess['type'] = 'find'
            guess = searcher.find(guess)
-       
+    
     guess = calculate_guesses(guess)
     
     if guess is not None:
@@ -354,6 +359,7 @@ def getTagData(filename, args=None):
         
         lang = processor.getPrimaryLanguage(filename)
         searcher.language = lang[0]
+        settings.taglanguage = lang[0]
         log.debug("Auto-selected tagging language %s based on first audio stream" % lang[1])
         
         # Gather tagdata
@@ -437,6 +443,10 @@ def walkDir(dir, preserveRelative=False):
                 continue
             ignore_folder = False
             
+            if d in settings.meks_walk_ignore:
+                log.debug("Folder %s on ignore list, stepping over folder" % r)
+                ignore_folder = r
+                continue
             if any(x in settings.meks_walk_ignore for x in f):
                 log.debug("Folder %s contains ignore file, stepping over folder" % r)
                 ignore_folder = r
