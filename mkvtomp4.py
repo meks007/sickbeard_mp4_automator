@@ -544,7 +544,7 @@ class MkvtoMp4:
 
         # in h264, drop the constant bitrate and use the recommended quality settings. 
         # ffmpeg default is 23 but our default is 20.
-        if vcodec == "h264" or vcodec == "h264qsv":
+        if vcodec == "h264" or vcodec == "h264qsv" or vcodec == "h264_vaapi":
             del options['video']['bitrate']
             options['video']['quality'] = self.settings.meks_video_quality
             options['video']['preset'] = self.settings.meks_h264_preset
@@ -562,6 +562,10 @@ class MkvtoMp4:
             options['preopts'].extend(['-init_hw_device', 'qsv=hw'])
             options['preopts'].extend(['-filter_hw_device', 'hw'])
             options['postopts'].extend(['-vf', 'hwupload=extra_hw_frames=64,format=qsv'])
+        if vcodec == "h264_vaapi":
+            options['preopts'].extend(['-hwaccel', 'vaapi'])
+            options['preopts'].extend(['-vaapi_device', '/dev/dri/renderD128'])
+            options['postopts'].extend(['-vf', 'format=nv12,hwupload'])
         if self.settings.meks_metadata:
             options['video']['metadata'] = self.settings.meks_metadata
         
